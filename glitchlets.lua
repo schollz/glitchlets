@@ -25,6 +25,8 @@ s={
   current_note=0,
   i=2,
   resolution=0.025,
+  minimum_quantized=0.125,-- miniumum quantization is 1/8th notes
+  loop_time=0,
 }
 
 -- constants
@@ -49,8 +51,8 @@ function init()
     params:set_action(i.."sample length",update_parameters)
     params:add_control(i.."glitch start",i.."glitch start",controlspec.new(0,64,'lin',1,0,'beats'))
     params:set_action(i.."glitch start",update_parameters)
-    params:add_control(i.."glitch length",i.."glitch length",controlspec.new(0,64,'lin',1,1,'beats'))
-    params:set_action(i.."glitch length",update_parameters)
+    params:add_control(i.."glitches",i.."glitches",controlspec.new(0,64,'lin',1,1,'x'))
+    params:set_action(i.."glitches",update_parameters)
   end
   
   params:read(_path.data..'glitchlets/'.."glitchlets.pset")
@@ -65,8 +67,8 @@ function init()
     s.v[i].sample_length=0
     s.v[i].sample_end=0
     s.v[i].glitch_start=0
-    s.v[i].glitch_length=0
-    s.v[i].glitch_end=0
+    s.v[i].glitches=0
+    s.v[i].glitch_num=0
     s.v[i].reset_every=0
   end
   
@@ -88,8 +90,8 @@ function init()
     softcut.play(i,0)
     softcut.rec(i,0)
     softcut.rate(i,1)
-    softcut.loop_start(i,clock.get_beat_sec()*params:get(i.."sample start"))
-    softcut.loop_end(i,clock.get_beat_sec()*params:get(i.."sample start")+clock.get_beat_sec()*params:get(i.."sample length"))
+    softcut.loop_start(i,0)
+    softcut.loop_end(i,30)
     softcut.loop(i,1)
     
     softcut.fade_time(i,0.2)
@@ -142,20 +144,54 @@ function update_main()
   if s.update_ui then
     redraw()
   end
+  if math.floor(clock.get_beats())%params:get("loop length")==0 then
+    -- reset amplitude time
+    s.loop_time=0
+  end
   -- TODO
   -- check all parameters for each voice and update
   -- if it has changed
+  for i=2,6 do
+    if s.v[i].sample_start~=params:get(i.."sample start") || s.v[i].sample_length~=params:get(i.."sample length") || then
+      s.v[i].sample_start=params:get(i.."sample start")
+      s.v[i].sample_length=params:get(i.."sample length")
+      s.v[i].sample_end=clock.get_beat_sec()*(s.v[i].sample_start+s.v[i].sample_end)
+      softcut.loop_start(i,clock.get_beat_sec()*s.v[i].sample_start)
+      softcut.loop_end(i,s.v[i].sample_end)
+      softcut.position(i,clock.get_beat_sec()*s.v[i].sample_start)
+    end
+    if s.v[i].volume~=params:get(i.."volume") then
+      s.v[i].volume=params:get(i.."volume")
+      softcut.level(i,s.v[i].volume)
+    end
+    if s.v[i].probability~=params:get(i.."probability") then
+      s.v[i].probability=params:get(i.."probability")
+    end
+    if s.v[i].active~=(params:get(i.."active")==2) then
+      s.v[i].active=(params:get(i.."active")==2)
+    end
+    -- TODO if active
+    -- check if its ready to activate
+    if s.v[i].active then
+      
+    end
+  end
+  
 end
 
 function update_amp(val)
   -- toggle recording on with incoming amplitude
   -- toggle recording off with silence
-  table.insert(s.amps,val)
+  s.amps[round_to_nearest(s.v[1].position,s.minimum_quantized)]=val
   s.update_ui=true
 end
 
 function update_loop_length(x)
-  
+  -- rebuild table
+  s.amps={}
+  for i=1,(clock.get_beat_sec()*x)/s.minimum_quantized do
+    table.insert(s.amps,0)
+  end
   softcut.loop_end(1,clock.get_beat_sec()*x)
 end
 
@@ -323,11 +359,7 @@ function sign(x)
 end
 
 function round_to_nearest(x,yth)
-  remainder=x%yth
-  if remainder==0 then
-    return x
-  end
-  return x+yth-remainder
+  return x-(x%yth)
 end
 
 function max(a)
