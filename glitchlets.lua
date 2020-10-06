@@ -46,11 +46,11 @@ function init()
     params:set_action(i.."reset every",update_parameters)
     params:add_control(i.."probability",i.."probability",controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action(i.."probability",update_parameters)
-    params:add_control(i.."sample start",i.."sample start",controlspec.new(0,64,'lin',1,0,'beats'))
+    params:add_control(i.."sample start",i.."sample start",controlspec.new(0,64,'lin',s.minimum_quantized,0,'beats'))
     params:set_action(i.."sample start",update_parameters)
-    params:add_control(i.."sample length",i.."sample length",controlspec.new(0,64,'lin',1,1,'beats'))
+    params:add_control(i.."sample length",i.."sample length",controlspec.new(0,64,'lin',s.minimum_quantized,1,'beats'))
     params:set_action(i.."sample length",update_parameters)
-    params:add_control(i.."glitch start",i.."glitch start",controlspec.new(0,64,'lin',1,0,'beats'))
+    params:add_control(i.."glitch start",i.."glitch start",controlspec.new(0,64,'lin',s.minimum_quantized,0,'beats'))
     params:set_action(i.."glitch start",update_parameters)
     params:add_control(i.."glitches",i.."glitches",controlspec.new(0,64,'lin',1,1,'x'))
     params:set_action(i.."glitches",update_parameters)
@@ -186,8 +186,6 @@ function update_main()
 end
 
 function update_amp(val)
-  -- toggle recording on with incoming amplitude
-  -- toggle recording off with silence
   s.amps[round_to_nearest(s.v[1].position,s.minimum_quantized)]=val
   s.update_ui=true
 end
@@ -205,10 +203,10 @@ function update_loop_length_and_update(x)
   update_loop_length(x)
   update_parameters(0)
 end
+
 --
 -- input
 --
-
 function key(n,z)
   if n==1 then
     if z==1 then
@@ -222,9 +220,12 @@ end
 
 function enc(n,d)
   if s.shift and n==1 then
+  elseif n==1 then
+    s.i=util.clamp(s.i+sign(d),2,6)
   end
   s.update_ui=true
 end
+
 --
 -- screen
 --
@@ -232,10 +233,19 @@ function redraw()
   s.update_ui=false
   screen.clear()
   
-  shift=0
+  shift_amount=0
   if s.shift then
-    shift=5
+    shift_amount=5
   end
+  
+  -- show glitchlet info
+  x=4+shift_amount
+  y=8+shift_amount
+  screen.move(x,y)
+  screen.text(s.i-1)
+  screen.move(x,y)
+  screen.rect(x-3,y-7,10,10)
+  screen.stroke()
   
   if s.message~="" then
     screen.level(0)
