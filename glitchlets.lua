@@ -14,6 +14,7 @@ s={
   v={},-- voices to be initialized in init()
   amps={},--store amp information
   update_ui=false,-- toggles redraw
+  update_parameters=false,
   recording=false,-- recording state
   force_recording=false,
   loop_end=0,-- amount recorded into buffer
@@ -130,6 +131,7 @@ end
 -- updaters
 --
 function update_parameters(x)
+  s.update_parameters=true
   params:write(_path.data..'glitchlets/'.."glitchlets.pset")
 end
 
@@ -151,27 +153,31 @@ function update_main()
   -- TODO
   -- check all parameters for each voice and update
   -- if it has changed
+  if s.update_parameters then
+    for i=2,6 do
+      if s.v[i].sample_start~=params:get(i.."sample start") || s.v[i].sample_length~=params:get(i.."sample length") || then
+        s.v[i].sample_start=params:get(i.."sample start")
+        s.v[i].sample_length=params:get(i.."sample length")
+        s.v[i].sample_end=clock.get_beat_sec()*(s.v[i].sample_start+s.v[i].sample_end)
+        softcut.loop_start(i,clock.get_beat_sec()*s.v[i].sample_start)
+        softcut.loop_end(i,s.v[i].sample_end)
+        softcut.position(i,clock.get_beat_sec()*s.v[i].sample_start)
+      end
+      if s.v[i].volume~=params:get(i.."volume") then
+        s.v[i].volume=params:get(i.."volume")
+        softcut.level(i,s.v[i].volume)
+      end
+      if s.v[i].probability~=params:get(i.."probability") then
+        s.v[i].probability=params:get(i.."probability")
+      end
+      if s.v[i].active~=(params:get(i.."active")==2) then
+        s.v[i].active=(params:get(i.."active")==2)
+      end
+    end
+  end
+  -- TODO: if active
+  -- check if its ready to activate
   for i=2,6 do
-    if s.v[i].sample_start~=params:get(i.."sample start") || s.v[i].sample_length~=params:get(i.."sample length") || then
-      s.v[i].sample_start=params:get(i.."sample start")
-      s.v[i].sample_length=params:get(i.."sample length")
-      s.v[i].sample_end=clock.get_beat_sec()*(s.v[i].sample_start+s.v[i].sample_end)
-      softcut.loop_start(i,clock.get_beat_sec()*s.v[i].sample_start)
-      softcut.loop_end(i,s.v[i].sample_end)
-      softcut.position(i,clock.get_beat_sec()*s.v[i].sample_start)
-    end
-    if s.v[i].volume~=params:get(i.."volume") then
-      s.v[i].volume=params:get(i.."volume")
-      softcut.level(i,s.v[i].volume)
-    end
-    if s.v[i].probability~=params:get(i.."probability") then
-      s.v[i].probability=params:get(i.."probability")
-    end
-    if s.v[i].active~=(params:get(i.."active")==2) then
-      s.v[i].active=(params:get(i.."active")==2)
-    end
-    -- TODO if active
-    -- check if its ready to activate
     if s.v[i].active then
       
     end
@@ -231,8 +237,6 @@ function redraw()
     shift=5
   end
   
-  draw_waveform()
-  
   if s.message~="" then
     screen.level(0)
     x=64
@@ -248,97 +252,6 @@ function redraw()
   end
   
   screen.update()
-end
-
-function draw_waveform()
-  -- show amplitudes
-  local l=1
-  local r=128
-  local w=r-l
-  local m=32
-  local h=32
-  
-  local amps={}
-  -- truncate amps to the the current biased loop
-  for k,v in pairs(s.amps) do
-    if k*s.resolution>=s.loop_bias[1] and k*s.resolution<=s.loop_end-s.loop_bias[2] then
-      table.insert(amps,v)
-    end
-  end
-  maxval=max(amps)
-  nval=#amps
-  
-  maxw=nval
-  if maxw>w then
-    maxw=w
-  end
-  
-  -- find active positions
-  active_pos={}
-  for i=2,6 do
-    if s.v[i].midi>0 then
-      curpos=(s.v[i].position-s.v[i].loop_bias[1])/(s.loop_end-s.v[i].loop_bias[2]-s.v[i].loop_bias[1])
-      table.insert(active_pos,round(curpos*maxw))
-      table.insert(active_pos,round(curpos*maxw)+1)
-      table.insert(active_pos,round(curpos*maxw)-1)
-    end
-  end
-  
-  disp={}
-  for i=1,w do
-    disp[i]=-1
-  end
-  if nval<w then
-    -- draw from left to right
-    for k,v in pairs(amps) do
-      disp[k]=(v/maxval)*h
-    end
-  else
-    for i=1,w do
-      disp[i]=-2
-    end
-    for k,v in pairs(amps) do
-      i=round(w/nval*k)
-      if i>=1 and i<=w then
-        if disp[i]==-2 then
-          disp[i]=(v/maxval)*h
-        else
-          disp[i]=(disp[i]+(v/maxval)*h)/2
-        end
-      end
-    end
-    for k,v in pairs(disp) do
-      if v==-2 then
-        if k==1 then
-          disp[k]=0
-        else
-          disp[k]=disp[k-1]
-        end
-      end
-    end
-  end
-  
-  maxval=max(disp)
-  for k,v in pairs(disp) do
-    if v==-1 then
-      break
-    end
-    bright=false
-    for l,u in pairs(active_pos) do
-      if k==u then
-        bright=true
-      end
-    end
-    if bright then
-      screen.level(15)
-    else
-      screen.level(1)
-    end
-    screen.move(l+k,m)
-    screen.line(l+k,m+(v/maxval)*h)
-    screen.line(l+k,m-(v/maxval)*h)
-    screen.stroke()
-  end
 end
 
 --
