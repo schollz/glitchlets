@@ -17,9 +17,6 @@ s={
   recording=false,-- recording state
   force_recording=false,
   loop_end=0,-- amount recorded into buffer
-  armed=false,
-  mode=0,
-  mode_name="",
   shift=false,
   monitor=false,
   message="",
@@ -33,6 +30,8 @@ s={
 -- constants
 function init()
   params:add_separator("glitchlets")
+  params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,4,'beats'))
+  params:set_action("loop length",update_loop_length_and_update)
   
   for i=1,6 do
     params:add_group("glitchlet "..i,8)
@@ -42,7 +41,7 @@ function init()
     params:set_action(i.."volume",update_parameters)
     params:add_control(i.."reset every",i.."reset every",controlspec.new(0,64,'lin',1,4,'beats'))
     params:set_action(i.."reset every",update_parameters)
-    params:add_control(i.."probability",i.."probability",controlspec.new(0,100,'lin',100,1,'%'))
+    params:add_control(i.."probability",i.."probability",controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action(i.."probability",update_parameters)
     params:add_control(i.."sample start",i.."sample start",controlspec.new(0,64,'lin',1,0,'beats'))
     params:set_action(i.."sample start",update_parameters)
@@ -59,7 +58,16 @@ function init()
   for i=1,6 do
     s.v[i]={}
     s.v[i].active=0
+    s.v[i].volume=0
     s.v[i].position=0
+    s.v[i].probability=0
+    s.v[i].sample_start=0
+    s.v[i].sample_length=0
+    s.v[i].sample_end=0
+    s.v[i].glitch_start=0
+    s.v[i].glitch_length=0
+    s.v[i].glitch_end=0
+    s.v[i].reset_every=0
   end
   
   -- initialize softcut
@@ -80,8 +88,8 @@ function init()
     softcut.play(i,0)
     softcut.rec(i,0)
     softcut.rate(i,1)
-    softcut.loop_start(i,0)
-    softcut.loop_end(i,300)
+    softcut.loop_start(i,clock.get_beat_sec()*params:get(i.."sample start"))
+    softcut.loop_end(i,clock.get_beat_sec()*params:get(i.."sample start")+clock.get_beat_sec()*params:get(i.."sample length"))
     softcut.loop(i,1)
     
     softcut.fade_time(i,0.2)
@@ -92,6 +100,7 @@ function init()
     softcut.position(i,0)
     softcut.enable(i,1)
   end
+  update_loop_length(params:get("loop length"))
   
   -- initialize timers
   -- initialize timer for updating screen
@@ -133,6 +142,9 @@ function update_main()
   if s.update_ui then
     redraw()
   end
+  -- TODO
+  -- check all parameters for each voice and update
+  -- if it has changed
 end
 
 function update_amp(val)
@@ -142,6 +154,15 @@ function update_amp(val)
   s.update_ui=true
 end
 
+function update_loop_length(x)
+  
+  softcut.loop_end(1,clock.get_beat_sec()*x)
+end
+
+function update_loop_length_and_update(x)
+  update_loop_length(x)
+  update_parameters(0)
+end
 --
 -- input
 --
