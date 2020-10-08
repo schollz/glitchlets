@@ -15,7 +15,6 @@ s={
   v={},-- voices to be initialized in init()
   amps={},--store amp information
   update_ui=false,-- toggles redraw
-  update_parameters=false,
   recording=false,-- recording state
   force_recording=false,
   loop_end=0,-- amount recorded into buffer
@@ -46,33 +45,31 @@ function init()
   params:add_separator("glitchlets")
   params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
-  params:add{type="control",id="glitch amp",name="glitch amp",controlspec=controlspec.new(0,1,'lin',0,0.01,'')}
-  params:add{type="control",id="engine amp",name="engine amp",controlspec=controlspec.new(0,1,'lin',0,0.9,''),
+  params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,0.01,'')}
+  params:set_action("glitch volume",update_parameters)
+  params:add{type="control",id="warb volume",name="warb volume",controlspec=controlspec.new(0,1,'lin',0,0.9,''),
   action=function(x) engine.amp(x) end}
+  params:set_action("warb volume",update_parameters)
+  params:read(_path.data..'glitchlets/'.."glitchlets.pset")
+  update_loop_length(params:get("loop length"))
   
   for i=2,6 do
-    params:add_group("glitchlet "..i-1,9)
+    params:add_group("glitchlet "..i-1,7)
     params:add_option(i.."active","active",{"no","yes"},1)
     params:set_action(i.."active",update_parameters)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
     params:set_action(i.."volume",update_parameters)
-    params:add_control(i.."reset every","reset every",controlspec.new(0,64,'lin',1,4,'beats'))
-    params:set_action(i.."reset every",update_parameters)
     params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action(i.."glitch probability",update_parameters)
     params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action(i.."warb probability",update_parameters)
-    params:add_control(i.."sample start","sample start",controlspec.new(0,6400,'lin',s.sixteenth_beat,0,'ms'))
+    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*1000*i/7,'ms'))
     params:set_action(i.."sample start",update_parameters)
-    params:add_control(i.."sample length","sample length",controlspec.new(0,6400,'lin',s.sixteenth_beat,s.sixteenth_beat*2,'ms'))
+    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
     params:set_action(i.."sample length",update_parameters)
-    params:add_control(i.."glitch start","glitch start",controlspec.new(0,6400,'lin',s.sixteenth_beat,0,'ms'))
-    params:set_action(i.."glitch start",update_parameters)
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,4,'x'))
     params:set_action(i.."glitches",update_parameters)
   end
-  
-  -- params:read(_path.data..'glitchlets/'.."glitchlets.pset")
   
   for i=1,6 do
     s.v[i]={}
@@ -84,10 +81,8 @@ function init()
     s.v[i].sample_start=0
     s.v[i].sample_length=0
     s.v[i].sample_end=0
-    s.v[i].glitch_start=0
     s.v[i].glitches=0
     s.v[i].glitch_num=0
-    s.v[i].reset_every=0
   end
   
   -- initialize softcut
@@ -116,11 +111,10 @@ function init()
     softcut.loop(i,1)
     
     softcut.fade_time(i,0.2)
-    softcut.level_slew_time(i,0)
-    softcut.rate_slew_time(i,0)
+    softcut.level_slew_time(i,0.1)
+    softcut.rate_slew_time(i,0.1)
     softcut.phase_quant(i,s.resolution)
   end
-  update_loop_length(params:get("loop length"))
   
   -- initialize timers
   -- initialize timer for updating screen
@@ -151,7 +145,6 @@ end
 -- updaters
 --
 function update_parameters(x)
-  s.update_parameters=true
   params:write(_path.data..'glitchlets/'.."glitchlets.pset")
 end
 
@@ -170,77 +163,57 @@ function update_main()
     -- reset amplitude time
     s.loop_time=0
   end
-  -- TODO
-  -- check all parameters for each voice and update
-  -- if it has changed
-  if s.update_parameters then
-    for i=2,6 do
-      if s.v[i].sample_start~=params:get(i.."sample start")/1000 or s.v[i].sample_length~=params:get(i.."sample length")/1000 then
-        s.v[i].sample_start=params:get(i.."sample start")/1000
-        s.v[i].sample_length=params:get(i.."sample length")/1000
-        s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
-      end
-      if s.v[i].volume~=params:get(i.."volume") then
-        s.v[i].volume=params:get(i.."volume")
-      end
-      if s.v[i].glitches~=params:get(i.."glitches") then
-        s.v[i].glitches=params:get(i.."glitches")
-      end
-      if s.v[i].active~=(params:get(i.."active")==2) then
-        s.v[i].active=(params:get(i.."active")==2)
-      end
-    end
-  end
+  
   -- activate if ready
   for i=2,6 do
     if s.shift then goto continue end
-    if not s.v[i].active then goto continue end
-    if s.v[i].glitches==0 then goto continue end
-    if s.v[i].sample_length==0 then goto continue end
+    if params:get(i.."active")==1 then goto continue end
+    if params:get(i.."glitches")==0 then goto continue end
+    if params:get(i.."sample length")==0 then goto continue end
     if s.v[i].playing==true then goto continue end
     if not s.v[i].loop_reset then goto continue end
     active1=(s.v[1].position<s.loop_end and math.abs(s.v[1].position-s.v[i].sample_start)<s.sixteenth_beat/1000)
     active2=(s.v[1].position>=s.loop_end and math.abs(s.v[1].position-s.loop_end-s.v[i].sample_start)<s.sixteenth_beat/1000)
     if (active1==false and active2==false) then goto continue end
     
-    s.v[i].playing=true
-    s.v[i].loop_reset=false
+    s.v[i].sample_start=params:get(i.."sample start")/1000
+    s.v[i].sample_length=params:get(i.."sample length")/1000
+    s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
     local j=i
     clock.run(function()
-      clock.sleep(s.v[j].sample_length)
-      if math.random()*100<=params:get(i.."warb probability") then
+      local glitched=false
+      -- supercollider glitching
+      if math.random()*100<=params:get(j.."warb probability") then
+        glitched=true
         audio.level_monitor(0)
-        engine.release(s.v[i].sample_length*s.v[i].glitches*2)
-        engine.amp(params:get("engine amp")*params:get(i.."volume"))
+        s.v[j].playing=true
+        s.v[j].loop_reset=false
+        engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
+        engine.amp(params:get("warb volume")*params:get(j.."volume"))
         engine.wobble(s.wobbles[math.random(#s.wobbles)])
         engine.endfreq(s.endhzs[math.random(#s.endhzs)])
         engine.hz(s.hzs[math.random(#s.hzs)])
       end
-      if math.random()*100<params:get(i.."glitch probability") then
+      -- softcut glitching
+      if math.random()*100<params:get(j.."glitch probability") then
+        glitched=true
         audio.level_monitor(0)
+        s.v[j].playing=true
+        s.v[j].loop_reset=false
+        clock.sleep(s.v[j].sample_length)
         print("glitching "..j)
-        print("stopping in "..s.v[j].sample_length*s.v[j].glitches)
+        print("stopping in "..s.v[j].sample_length*params:get(j.."glitches"))
         print("sample_length "..s.v[j].sample_length)
         if active1 then
-          softcut.position(i,s.v[i].sample_start+s.loop_end)
-          softcut.loop_start(i,s.v[i].sample_start+s.loop_end)
-          softcut.loop_end(i,s.v[i].sample_end+s.loop_end)
+          softcut.position(i,s.v[j].sample_start+s.loop_end)
+          softcut.loop_start(i,s.v[j].sample_start+s.loop_end)
+          softcut.loop_end(i,s.v[j].sample_end+s.loop_end)
         else
-          softcut.position(i,s.v[i].sample_start)
-          softcut.loop_start(i,s.v[i].sample_start)
-          softcut.loop_end(i,s.v[i].sample_end)
+          softcut.position(i,s.v[j].sample_start)
+          softcut.loop_start(i,s.v[j].sample_start)
+          softcut.loop_end(i,s.v[j].sample_end)
         end
-        softcut.level(j,s.v[j].volume*params:get("glitch amp"))
-        -- for k=1,10 do
-        --   softcut.pre_filter_fc(j,15000-1500*k)
-        --   softcut.post_filter_fc(j,15000-1500*k)
-        --   clock.sleep(s.v[j].sample_length*(s.v[j].glitches+3)/20)
-        -- end
-        -- for k=1,10 do
-        --   softcut.pre_filter_fc(j,1500*k)
-        --   softcut.post_filter_fc(j,1500*k)
-        --   clock.sleep(s.v[j].sample_length*(s.v[j].glitches+3)/20)
-        -- end
+        softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
         local rrand=math.random()
         if rrand<0.33 then
           softcut.rate(j,1.5)
@@ -249,12 +222,13 @@ function update_main()
         else
           softcut.rate(j,1)
         end
+        clock.sleep(s.v[j].sample_length*(s.v[j].glitches+1))
       end
-      clock.sleep(s.v[j].sample_length*(s.v[j].glitches+1))
-      print("stopping "..j)
-      softcut.level(j,0)
-      audio.level_monitor(1)
-      s.v[j].playing=false
+      if glitched then
+        softcut.level(j,0)
+        audio.level_monitor(1)
+        s.v[j].playing=false
+      end
     end)
     ::continue::
   end
@@ -298,7 +272,7 @@ end
 
 function update_loop_length_and_update(x)
   update_loop_length(x)
-  update_parameters(0)
+  params:write(_path.data..'glitchlets/'.."glitchlets.pset")
 end
 
 --
@@ -317,12 +291,12 @@ function key(n,z)
       adj=-1
     end
     local foo=s.param_mode+adj
-    if foo<0 then
+    if foo<2 then
+      foo=6
+    elseif foo>6 then
       foo=2
-    elseif foo>2 then
-      foo=0
     end
-    s.param_mode=foo
+    s.i=foo
   end
   s.update_ui=true
 end
@@ -330,7 +304,7 @@ end
 function enc(n,d)
   if s.shift and n==1 then
   elseif n==1 then
-    s.i=util.clamp(s.i+sign(d),2,6)
+    s.i=util.clamp(s.param_mode+sign(d),0,2)
   elseif n==2 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
