@@ -31,11 +31,17 @@ s={
   loop_time=0,
   last_k=0,
   param_mode=0,
-  wobbles={1/2,2,1,1/3,1/4},
+  wobbles={1/2,2,1,1/3,1/4,1/6},
+  endhzs={40,80,120},
+  hzs={200,400,600},
 }
 
 -- constants
 function init()
+  audio.level_eng_cut(0)
+  audio.level_adc_cut(1)
+  audio.level_tape_cut(1)
+
   print(s.sixteenth_beat)
   params:add_separator("glitchlets")
   params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
@@ -46,7 +52,7 @@ params:add{type="control",id="engine amp",name="engine amp",controlspec=cs_AMP,
     action=function(x) engine.amp(x) end}
 
   for i=2,6 do
-    params:add_group("glitchlet "..i-1,8)
+    params:add_group("glitchlet "..i-1,9)
     params:add_option(i.."active","active",{"no","yes"},1)
     params:set_action(i.."active",update_parameters)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
@@ -197,18 +203,22 @@ function update_main()
     active1=(s.v[1].position<s.loop_end and math.abs(s.v[1].position-s.v[i].sample_start)<s.sixteenth_beat/1000)
     active2=(s.v[1].position>=s.loop_end and math.abs(s.v[1].position-s.loop_end-s.v[i].sample_start)<s.sixteenth_beat/1000)
     if (active1==false and active2==false) then goto continue end
-    if math.random()*100<=params:get(i.."warb probability") then 
-	    engine.amp(params:get("engine amp")*params:get(i.."volume"))
-	    engine.wobble(s.wobbles[math.random(#s.wobbles)])
-	    engine.hz(440)
-    end
-    if math.random()*100>params:get(i.."glitch probability") then goto continue end
     
     s.v[i].playing=true
     s.v[i].loop_reset=false
     local j=i
     clock.run(function()
       clock.sleep(s.v[j].sample_length)
+    if math.random()*100<=params:get(i.."warb probability") then 
+      audio.level_monitor(0)
+	    engine.release(s.v[i].sample_length*s.v[i].glitches*2)
+	    engine.amp(params:get("engine amp")*params:get(i.."volume"))
+	    engine.wobble(s.wobbles[math.random(#s.wobbles)])
+	    engine.endfreq(s.endhzs[math.random(#s.endhzs)])
+	    engine.hz(s.hzs[math.random(#s.hzs)])
+    end
+    if math.random()*100<params:get(i.."glitch probability") then
+      audio.level_monitor(0)
       print("glitching "..j)
       print("stopping in "..s.v[j].sample_length*s.v[j].glitches)
       print("sample_length "..s.v[j].sample_length)
@@ -221,8 +231,7 @@ function update_main()
         softcut.loop_start(i,s.v[i].sample_start)
         softcut.loop_end(i,s.v[i].sample_end)
       end
-      softcut.level(j,s.v[j].volume*params:get("glitch level"))
-      audio.level_monitor(0)
+      softcut.level(j,s.v[j].volume*params:get("glitch amp"))
       -- for k=1,10 do
       --   softcut.pre_filter_fc(j,15000-1500*k)
       --   softcut.post_filter_fc(j,15000-1500*k)
@@ -240,6 +249,7 @@ function update_main()
         softcut.rate(j,2)
       else
         softcut.rate(j,1)
+      end
       end
       clock.sleep(s.v[j].sample_length*(s.v[j].glitches+1))
       print("stopping "..j)
