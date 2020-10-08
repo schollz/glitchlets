@@ -7,6 +7,10 @@
 --
 --    ▼ instructions below ▼
 --
+-- hold K1 to turn off glitches
+-- K2/K3 switch glitchlet
+-- E1 switchs parameters
+-- E2/E3 modulates parameter
 
 engine.name='Warb'
 
