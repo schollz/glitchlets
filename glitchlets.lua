@@ -24,16 +24,18 @@ s={
   current_beat=0,
   current_note=0,
   i=2,
-  resolution=0.0625/2,
-  sixteenth_beat=clock.get_beat_sec()/16*1000,
+  resolution=clock.get_beat_sec()/32,
+  sixteenth_beat=clock.get_beat_sec()/32*1000,
   loop_time=0,
   last_k=0,
+  param_mode=0,
 }
 
 -- constants
 function init()
+  print(s.sixteenth_beat)
   params:add_separator("glitchlets")
-  params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,4,'beats'))
+  params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
   
   for i=2,6 do
@@ -56,7 +58,7 @@ function init()
     params:set_action(i.."glitches",update_parameters)
   end
   
-  params:read(_path.data..'glitchlets/'.."glitchlets.pset")
+  -- params:read(_path.data..'glitchlets/'.."glitchlets.pset")
   
   for i=1,6 do
     s.v[i]={}
@@ -151,7 +153,7 @@ function update_main()
   if s.update_ui then
     redraw()
   end
-  if math.floor(clock.get_beats())%params:get("loop length")==0 then
+  if math.floor(clock.get_beats())%params:get("loop length")==0 and s.loop_time~=0 then
     -- reset amplitude time
     s.loop_time=0
   end
@@ -184,6 +186,7 @@ function update_main()
     if s.shift then goto continue end
     if not s.v[i].active then goto continue end
     if s.v[i].glitches==0 then goto continue end
+    if s.v[i].sample_length==0 then goto continue end
     if s.v[i].playing==true then goto continue end
     if not s.v[i].loop_reset then goto continue end
     if math.random()*100>s.v[i].probability then goto continue end
@@ -210,6 +213,24 @@ function update_main()
       end
       softcut.level(j,s.v[j].volume)
       audio.level_monitor(0)
+      -- for k=1,10 do
+      --   softcut.pre_filter_fc(j,15000-1500*k)
+      --   softcut.post_filter_fc(j,15000-1500*k)
+      --   clock.sleep(s.v[j].sample_length*(s.v[j].glitches+3)/20)
+      -- end
+      -- for k=1,10 do
+      --   softcut.pre_filter_fc(j,1500*k)
+      --   softcut.post_filter_fc(j,1500*k)
+      --   clock.sleep(s.v[j].sample_length*(s.v[j].glitches+3)/20)
+      -- end
+      local rrand=math.random()
+      if rrand<0.33 then
+        softcut.rate(j,1.5)
+      elseif rrand<0.66 then
+        softcut.rate(j,2)
+      else
+        softcut.rate(j,1)
+      end
       clock.sleep(s.v[j].sample_length*(s.v[j].glitches+1))
       print("stopping "..j)
       softcut.level(j,0)
@@ -227,6 +248,15 @@ function update_amp(val)
       print("reseting loop "..s.v[1].position.." loop end="..s.loop_end)
       for i=2,6 do
         s.v[i].loop_reset=true
+      end
+      if math.random()<0.5 then
+        print("high pass")
+        softcut.pre_filter_hp (1,1)
+        softcut.pre_filter_fc(1,12000)
+      else
+        print("low pass")
+        softcut.pre_filter_lp (1,1)
+        softcut.pre_filter_fc(1,600)
       end
     end
     s.amps[k]=val
@@ -267,7 +297,7 @@ function key(n,z)
     if n==2 then
       adj=-1
     end
-    params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+adj,0,32))
+    s.param_mode=util.clamp(s.param_mode+adj,0,1)
   end
   s.update_ui=true
 end
@@ -276,18 +306,25 @@ function enc(n,d)
   if s.shift and n==1 then
   elseif n==1 then
     s.i=util.clamp(s.i+sign(d),2,6)
-  elseif n==2 then
+  elseif n==2 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
       params:set(s.i.."active",2)
     end
     params:set(s.i.."sample start",params:get(s.i.."sample start")+sign(d)*s.sixteenth_beat)
-  elseif n==3 then
+    if params:get(s.i.."sample length")==0 then
+      params:set(s.i.."sample length",s.sixteenth_beat)
+    end
+  elseif n==3 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
       params:set(s.i.."active",2)
     end
     params:set(s.i.."sample length",params:get(s.i.."sample length")+sign(d)*s.sixteenth_beat)
+  elseif n==2 and s.param_mode==1 then
+    params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
+  elseif n==3 and s.param_mode==1 then
+    params:set(s.i.."probability",util.clamp(params:get(s.i.."probability")+d,0,100))
   end
   s.update_ui=true
 end
@@ -312,8 +349,15 @@ function redraw()
   screen.move(x,y)
   screen.rect(x-3,y-7,10,10)
   screen.stroke()
+  if s.param_mode==1 then
+    screen.level(15)
+  else
+    screen.level(1)
+  end
   screen.move(x+10,y)
   screen.text("x"..params:get(s.i.."glitches"))
+  screen.move(x+24,y)
+  screen.text(params:get(s.i.."probability").."%")
   
   -- draw waveform
   draw_waveform()
@@ -340,8 +384,8 @@ function draw_waveform()
   local l=1
   local r=128
   local w=r-l
-  local h=50
-  local m=64
+  local h=48
+  local m=57
   
   maxval=max(s.amps)
   nval=#s.amps/2
@@ -368,11 +412,24 @@ function draw_waveform()
   maxval=max(disp)
   
   time_per_x=s.loop_end/w
+  dots={false,false,false,false,false,false}
   for x,v in pairs(disp) do
     screen.level(1)
     for i=2,6 do
       if s.v[i].active and time_per_x*x>=s.v[i].sample_start and time_per_x*x<=s.v[i].sample_end then
-        screen.level(15)
+        if dots[i]==false then
+          dots[i]=true
+          screen.level(1)
+          if s.v[i].playing then
+            screen.level(15)
+          end
+          screen.move(x,64)
+          screen.text(i-1)
+          screen.fill()
+        end
+        if s.param_mode==0 then
+          screen.level(15)
+        end
       end
     end
     screen.move(x,m)
