@@ -457,9 +457,7 @@ function draw_waveform()
           screen.text(i-1)
           screen.fill()
         end
-        if s.param_mode==0 then
-          screen.level(15)
-        end
+        screen.level(15)
       end
     end
     screen.move(x,m)
