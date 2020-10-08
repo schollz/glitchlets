@@ -188,7 +188,21 @@ function update_main()
         audio.level_monitor(0)
         s.v[j].playing=true
         s.v[j].loop_reset=false
-        engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
+        if math.random()<0.5 then
+          engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
+          engine.attack(0.01)
+        else
+          engine.attack(s.v[j].sample_length*params:get(j.."glitches")*2)
+          engine.release(0.01)
+        end
+        local rrand=math.random()
+        if rrand<0.33 then
+          engine.rate(1.5)
+        elseif rrand<0.66 then
+          engine.rate(2)
+        else
+          engine.rate(1)
+        end
         engine.amp(params:get("warb volume")*params:get(j.."volume"))
         engine.wobble(s.wobbles[math.random(#s.wobbles)])
         engine.endfreq(s.endhzs[math.random(#s.endhzs)])
