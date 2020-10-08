@@ -6,7 +6,7 @@ Engine_Warb : CroneEngine {
 	var endfreq=40;
 	var attack=0.01;
 	var release=1;
-	var sustain=0.1;
+	var sustain=1;
 	var wobble=3;
 	var pan=0;
 	var rate=1;
@@ -30,8 +30,8 @@ Engine_Warb : CroneEngine {
 			player = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * rate, Impulse.ar(freq), startPos: Rand(0,20), doneAction:2, loop: 1) ;
 			player = RLPF.ar(player, SinOsc.ar(wobble/sustain).range(20000,80), XLine.ar(0.2,0.9,sustain)) ;
 			player= 4*Compander.ar(player, player, 0.1, 1,0.5, 0.01, 0.01);
-			env=Env.linen(attackTime:attack, sustainTime: sustain, releaseTime: release, level: amp, curve: 'lin').kr(2);
-			Out.ar(out, Pan2.ar((player*env), pan));
+			env=Env.linen(attackTime:0.01, sustainTime: 1, releaseTime: 1, level: amp, curve: 'lin').kr(2);
+			Out.ar(out, Pan2.ar((player), pan));
 		}).add;
 
 	    // Sync with audio norns' sc server

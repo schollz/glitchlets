@@ -29,8 +29,8 @@ s={
   current_beat=0,
   current_note=0,
   i=2,
-  resolution=0.02,
-  sixteenth_beat=clock.get_beat_sec()/8*1000,
+  resolution=clock.get_beat_sec()/16,
+  sixteenth_beat=clock.get_beat_sec()/16*1000,
   loop_time=0,
   last_k=0,
   param_mode=0,
@@ -112,6 +112,7 @@ function init()
     softcut.rate_slew_time(i,0.1)
     softcut.phase_quant(i,s.resolution)
   end
+  update_loop_length(params:get("loop length"))
   
   -- initialize timers
   -- initialize timer for updating screen
@@ -186,22 +187,23 @@ function update_main()
         audio.level_monitor(0)
         s.v[j].playing=true
         s.v[j].loop_reset=false
-        if math.random()<0.5 then
-          engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
-          engine.attack(0.01)
-        else
-          engine.attack(s.v[j].sample_length*params:get(j.."glitches")*2)
-          engine.release(0.01)
-        end
-        local rrand=math.random()
-        if rrand<0.33 then
-          engine.rate(1.5)
-        elseif rrand<0.66 then
-          engine.rate(2)
-        else
-          engine.rate(1)
-        end
-        engine.amp(params:get("warb volume")*params:get(j.."volume"))
+        -- if math.random()<0.5 then
+        --   engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
+        --   engine.attack(0.01)
+        -- else
+        --   engine.attack(s.v[j].sample_length*params:get(j.."glitches")*2)
+        --   engine.release(0.01)
+        -- end
+        -- local rrand=math.random()
+        -- if rrand<0.33 then
+        --   engine.rate(1.5)
+        -- elseif rrand<0.66 then
+        --   engine.rate(2)
+        -- else
+        --   engine.rate(1)
+        -- end
+        -- engine.amp(params:get("warb volume")*params:get(j.."volume"))
+        engine.amp(1)
         engine.wobble(s.wobbles[math.random(#s.wobbles)])
         engine.endfreq(s.endhzs[math.random(#s.endhzs)])
         engine.hz(s.hzs[math.random(#s.hzs)])
@@ -212,18 +214,18 @@ function update_main()
         audio.level_monitor(0)
         s.v[j].playing=true
         s.v[j].loop_reset=false
-        clock.sleep(s.v[j].sample_length)
+        -- clock.sleep(s.v[j].sample_length)
         print("glitching "..j)
         print("stopping in "..s.v[j].sample_length*params:get(j.."glitches"))
         print("sample_length "..s.v[j].sample_length)
         if active1 then
-          softcut.position(i,s.v[j].sample_start+s.loop_end)
-          softcut.loop_start(i,s.v[j].sample_start+s.loop_end)
-          softcut.loop_end(i,s.v[j].sample_end+s.loop_end)
+          softcut.position(j,s.v[j].sample_start+s.loop_end)
+          softcut.loop_start(j,s.v[j].sample_start+s.loop_end)
+          softcut.loop_end(j,s.v[j].sample_end+s.loop_end)
         else
-          softcut.position(i,s.v[j].sample_start)
-          softcut.loop_start(i,s.v[j].sample_start)
-          softcut.loop_end(i,s.v[j].sample_end)
+          softcut.position(j,s.v[j].sample_start)
+          softcut.loop_start(j,s.v[j].sample_start)
+          softcut.loop_end(j,s.v[j].sample_end)
         end
         softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
         local rrand=math.random()
@@ -279,6 +281,9 @@ function update_loop_length(x)
     table.insert(s.amps,0)
   end
   s.loop_end=clock.get_beat_sec()*x
+  print("final: "..s.loop_end)
+  print("final: "..s.loop_end/s.resolution)
+  softcut.loop_start(1,0)
   softcut.loop_end(1,clock.get_beat_sec()*x*2)
 end
 
