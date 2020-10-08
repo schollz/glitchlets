@@ -29,8 +29,8 @@ s={
   current_beat=0,
   current_note=0,
   i=2,
-  resolution=clock.get_beat_sec()/32,
-  sixteenth_beat=clock.get_beat_sec()/32*1000,
+  resolution=0.02,
+  sixteenth_beat=clock.get_beat_sec()/8*1000,
   loop_time=0,
   last_k=0,
   param_mode=0,
@@ -60,19 +60,12 @@ function init()
   for i=2,6 do
     params:add_group("glitchlet "..i-1,7)
     params:add_option(i.."active","active",{"no","yes"},1)
-    params:set_action(i.."active",update_parameters)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
-    params:set_action(i.."volume",update_parameters)
     params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,100,'%'))
-    params:set_action(i.."glitch probability",update_parameters)
     params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,100,'%'))
-    params:set_action(i.."warb probability",update_parameters)
     params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*1000*i/7,'ms'))
-    params:set_action(i.."sample start",update_parameters)
     params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
-    params:set_action(i.."sample length",update_parameters)
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,4,'x'))
-    params:set_action(i.."glitches",update_parameters)
   end
   
   for i=1,6 do
@@ -185,6 +178,7 @@ function update_main()
     s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
     local j=i
     clock.run(function()
+      print("attempting glitch...")
       local glitched=false
       -- supercollider glitching
       if math.random()*100<=params:get(j.."warb probability") then
@@ -308,7 +302,7 @@ function key(n,z)
     if n==2 then
       adj=-1
     end
-    local foo=s.param_mode+adj
+    local foo=s.i+adj
     if foo<2 then
       foo=6
     elseif foo>6 then
@@ -322,7 +316,7 @@ end
 function enc(n,d)
   if s.shift and n==1 then
   elseif n==1 then
-    s.i=util.clamp(s.param_mode+sign(d),0,2)
+    s.param_mode=util.clamp(s.param_mode+sign(d),0,2)
   elseif n==2 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
@@ -332,12 +326,20 @@ function enc(n,d)
     if params:get(s.i.."sample length")==0 then
       params:set(s.i.."sample length",s.sixteenth_beat)
     end
+    local i=s.i
+    s.v[i].sample_start=params:get(i.."sample start")/1000
+    s.v[i].sample_length=params:get(i.."sample length")/1000
+    s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
   elseif n==3 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
       params:set(s.i.."active",2)
     end
     params:set(s.i.."sample length",params:get(s.i.."sample length")+sign(d)*s.sixteenth_beat)
+    local i=s.i
+    s.v[i].sample_start=params:get(i.."sample start")/1000
+    s.v[i].sample_length=params:get(i.."sample length")/1000
+    s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
   elseif n==2 and s.param_mode==1 then
     params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
   elseif n==3 and s.param_mode==1 then

@@ -22,7 +22,7 @@ Engine_Warb : CroneEngine {
 	        SynthDef("Warb", {
 			arg out, inL=0, inR=1, freq=440, amp=amp, rate=rate, endfreq=endfreq, attack=attack, release=release, sustain=sustain, wobble=wobble, pan=pan;
 			var player, env;
-			-- heavily based off https://sccode.org/1-1e
+			// heavily based off https://sccode.org/1-1e
 			freq = XLine.ar(freq,endfreq,sustain/4);
 			freq = freq.cpsmidi + (LFNoise2.ar(3).range(-1,1) * (1/12));
 			freq = freq.midicps;
