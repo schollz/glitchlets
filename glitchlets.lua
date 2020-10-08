@@ -304,7 +304,13 @@ function key(n,z)
     if n==2 then
       adj=-1
     end
-    s.param_mode=util.clamp(s.param_mode+adj,0,1)
+   local foo = s.param_mode+adj
+   if foo < 0 then 
+	   foo = 2
+   elseif foo > 2 then 
+	   foo = 0
+   end
+   s.param_mode=foo
   end
   s.update_ui=true
 end
@@ -364,7 +370,16 @@ function redraw()
   screen.move(x+10,y)
   screen.text("x"..params:get(s.i.."glitches"))
   screen.move(x+24,y)
+  screen.text(params:get(s.i.."volume").."amp")
+  if s.param_mode==2 then
+    screen.level(15)
+  else
+    screen.level(1)
+  end
+  screen.move(x+38,y)
   screen.text(params:get(s.i.."glitch probability").."%")
+  screen.move(x+52,y)
+  screen.text(params:get(s.i.."warb probability").."%")
   
   -- draw waveform
   draw_waveform()
