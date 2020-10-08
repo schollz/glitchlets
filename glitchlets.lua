@@ -8,6 +8,8 @@
 --    ▼ instructions below ▼
 --
 
+engine.name = 'Warb'
+
 -- state variable
 s={
   v={},-- voices to be initialized in init()
@@ -37,7 +39,11 @@ function init()
   params:add_separator("glitchlets")
   params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
-  
+    cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
+params:add{type="control",id="glitch amp",name="glitch amp",controlspec=cs_AMP}
+params:add{type="control",id="engine amp",name="engine amp",controlspec=cs_AMP,
+    action=function(x) engine.amp(x) end}
+
   for i=2,6 do
     params:add_group("glitchlet "..i-1,8)
     params:add_option(i.."active","active",{"no","yes"},1)
@@ -46,8 +52,10 @@ function init()
     params:set_action(i.."volume",update_parameters)
     params:add_control(i.."reset every","reset every",controlspec.new(0,64,'lin',1,4,'beats'))
     params:set_action(i.."reset every",update_parameters)
-    params:add_control(i.."probability","probability",controlspec.new(0,100,'lin',1,100,'%'))
-    params:set_action(i.."probability",update_parameters)
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,100,'%'))
+    params:set_action(i.."glitch probability",update_parameters)
+    params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,100,'%'))
+    params:set_action(i.."warb probability",update_parameters)
     params:add_control(i.."sample start","sample start",controlspec.new(0,6400,'lin',s.sixteenth_beat,0,'ms'))
     params:set_action(i.."sample start",update_parameters)
     params:add_control(i.."sample length","sample length",controlspec.new(0,6400,'lin',s.sixteenth_beat,s.sixteenth_beat*2,'ms'))
@@ -67,7 +75,6 @@ function init()
     s.v[i].loop_reset=false
     s.v[i].volume=0
     s.v[i].position=0
-    s.v[i].probability=0
     s.v[i].sample_start=0
     s.v[i].sample_length=0
     s.v[i].sample_end=0
@@ -173,9 +180,6 @@ function update_main()
       if s.v[i].glitches~=params:get(i.."glitches") then
         s.v[i].glitches=params:get(i.."glitches")
       end
-      if s.v[i].probability~=params:get(i.."probability") then
-        s.v[i].probability=params:get(i.."probability")
-      end
       if s.v[i].active~=(params:get(i.."active")==2) then
         s.v[i].active=(params:get(i.."active")==2)
       end
@@ -189,10 +193,13 @@ function update_main()
     if s.v[i].sample_length==0 then goto continue end
     if s.v[i].playing==true then goto continue end
     if not s.v[i].loop_reset then goto continue end
-    if math.random()*100>s.v[i].probability then goto continue end
     active1=(s.v[1].position<s.loop_end and math.abs(s.v[1].position-s.v[i].sample_start)<s.sixteenth_beat/1000)
     active2=(s.v[1].position>=s.loop_end and math.abs(s.v[1].position-s.loop_end-s.v[i].sample_start)<s.sixteenth_beat/1000)
     if (active1==false and active2==false) then goto continue end
+    if math.random()*100<=params:get(i.."warb probability") then 
+	    engine.hz(440)
+    end
+    if math.random()*100>params:get(i.."glitch probability") then goto continue end
     
     s.v[i].playing=true
     s.v[i].loop_reset=false
@@ -211,7 +218,7 @@ function update_main()
         softcut.loop_start(i,s.v[i].sample_start)
         softcut.loop_end(i,s.v[i].sample_end)
       end
-      softcut.level(j,s.v[j].volume)
+      softcut.level(j,s.v[j].volume*params:get("glitch level"))
       audio.level_monitor(0)
       -- for k=1,10 do
       --   softcut.pre_filter_fc(j,15000-1500*k)
@@ -324,7 +331,7 @@ function enc(n,d)
   elseif n==2 and s.param_mode==1 then
     params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
   elseif n==3 and s.param_mode==1 then
-    params:set(s.i.."probability",util.clamp(params:get(s.i.."probability")+d,0,100))
+    params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
   end
   s.update_ui=true
 end
@@ -357,7 +364,7 @@ function redraw()
   screen.move(x+10,y)
   screen.text("x"..params:get(s.i.."glitches"))
   screen.move(x+24,y)
-  screen.text(params:get(s.i.."probability").."%")
+  screen.text(params:get(s.i.."glitch probability").."%")
   
   -- draw waveform
   draw_waveform()
