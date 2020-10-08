@@ -31,6 +31,7 @@ s={
   loop_time=0,
   last_k=0,
   param_mode=0,
+  wobbles={1/2,2,1,1/3,1/4},
 }
 
 -- constants
@@ -197,6 +198,8 @@ function update_main()
     active2=(s.v[1].position>=s.loop_end and math.abs(s.v[1].position-s.loop_end-s.v[i].sample_start)<s.sixteenth_beat/1000)
     if (active1==false and active2==false) then goto continue end
     if math.random()*100<=params:get(i.."warb probability") then 
+	    engine.amp(params:get("engine amp")*params:get(i.."volume"))
+	    engine.wobble(s.wobbles[math.random(#s.wobbles)])
 	    engine.hz(440)
     end
     if math.random()*100>params:get(i.."glitch probability") then goto continue end
@@ -337,7 +340,11 @@ function enc(n,d)
   elseif n==2 and s.param_mode==1 then
     params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
   elseif n==3 and s.param_mode==1 then
+    params:set(s.i.."volume",util.clamp(params:get(s.i.."volume")+d/100,0,1))
+  elseif n==2 and s.param_mode==2 then
     params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
+  elseif n==3 and s.param_mode==2 then
+    params:set(s.i.."warb probability",util.clamp(params:get(s.i.."warb probability")+d,0,100))
   end
   s.update_ui=true
 end
