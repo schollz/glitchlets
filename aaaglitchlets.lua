@@ -36,7 +36,7 @@ s={
   param_mode=0,
   wobbles={1/8,1/4,1/2,1,2,4},
   endhzs={10,20,30,40,50,60},
-  hzs={90,100,110,120,130,300},
+  hzs={90,100,110,120,130,80},
 }
 
 -- constants
@@ -78,7 +78,6 @@ function init()
     s.v[i].sample_start=0
     s.v[i].sample_length=0
     s.v[i].sample_end=0
-    s.v[i].glitches=0
     s.v[i].glitch_num=0
   end
   
@@ -106,10 +105,14 @@ function init()
     softcut.loop_start(i,0)
     softcut.loop_end(i,30)
     softcut.loop(i,1)
+    softcut.pre_filter_lp(i,1)
+    softcut.post_filter_lp(i,1)
+    softcut.pre_filter_fc(i,18000)
+    softcut.post_filter_fc(i,18000)
     
     softcut.fade_time(i,0.2)
-    softcut.level_slew_time(i,0.1)
-    softcut.rate_slew_time(i,0.1)
+    softcut.level_slew_time(i,0)
+    softcut.rate_slew_time(i,0)
     softcut.phase_quant(i,s.resolution)
   end
   update_loop_length(params:get("loop length"))
@@ -182,18 +185,15 @@ function update_main()
       print("attempting glitch...")
       local glitched=false
       -- supercollider glitching
-      if math.random()*100<=params:get(j.."warb probability") then
+      if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
         glitched=true
         audio.level_monitor(0)
         s.v[j].playing=true
         s.v[j].loop_reset=false
-        -- if math.random()<0.5 then
-        --   engine.release(s.v[j].sample_length*params:get(j.."glitches")*2)
-        --   engine.attack(0.01)
-        -- else
-        --   engine.attack(s.v[j].sample_length*params:get(j.."glitches")*2)
-        --   engine.release(0.01)
-        -- end
+        local total_length=s.v[j].sample_length*params:get(j.."glitches")
+        engine.attack(total_length*1/10)
+        engine.sustain(total_length)
+        engine.release(total_length)
         -- local rrand=math.random()
         -- if rrand<0.33 then
         --   engine.rate(1.5)
@@ -202,19 +202,17 @@ function update_main()
         -- else
         --   engine.rate(1)
         -- end
-        -- engine.amp(params:get("warb volume")*params:get(j.."volume"))
-        engine.amp(1)
+        engine.amp(params:get("warb volume")*params:get(j.."volume"))
         engine.wobble(s.wobbles[math.random(#s.wobbles)])
         engine.endfreq(s.endhzs[math.random(#s.endhzs)])
         engine.hz(s.hzs[math.random(#s.hzs)])
       end
       -- softcut glitching
-      if math.random()*100<params:get(j.."glitch probability") then
+      if math.random()*100<params:get(j.."glitch probability") and params:get(j.."volume")*params:get("glitch volume")>0 then
         glitched=true
         audio.level_monitor(0)
         s.v[j].playing=true
         s.v[j].loop_reset=false
-        -- clock.sleep(s.v[j].sample_length)
         print("glitching "..j)
         print("stopping in "..s.v[j].sample_length*params:get(j.."glitches"))
         print("sample_length "..s.v[j].sample_length)
@@ -236,9 +234,11 @@ function update_main()
         else
           softcut.rate(j,1)
         end
-        clock.sleep(s.v[j].sample_length*(s.v[j].glitches+1))
       end
       if glitched then
+        print("sleeping for "..s.v[j].sample_length*(params:get(j.."glitches")))
+        clock.sleep(s.v[j].sample_length*(params:get(j.."glitches")))
+        print("stopped glitch")
         softcut.level(j,0)
         audio.level_monitor(1)
         s.v[j].playing=false
@@ -256,15 +256,15 @@ function update_amp(val)
       for i=2,6 do
         s.v[i].loop_reset=true
       end
-      if math.random()<0.5 then
-        print("high pass")
-        softcut.pre_filter_hp (1,1)
-        softcut.pre_filter_fc(1,12000)
-      else
-        print("low pass")
-        softcut.pre_filter_lp (1,1)
-        softcut.pre_filter_fc(1,600)
-      end
+      -- if math.random()<0.5 then
+      --   print("high pass")
+      --   softcut.pre_filter_hp (1,1)
+      --   softcut.pre_filter_fc(1,12000)
+      -- else
+      --   print("low pass")
+      --   softcut.pre_filter_lp (1,1)
+      --   softcut.pre_filter_fc(1,600)
+      -- end
     end
     s.amps[k]=val
     s.update_ui=true
