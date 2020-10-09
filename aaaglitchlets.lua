@@ -34,7 +34,7 @@ s={
   loop_time=0,
   last_k=0,
   param_mode=0,
-  wobbles={1/8,1/4,1/2,1,2,4},
+  wobbles={1/8,1/4,1/2,1,2},
   endhzs={10,20,30,40,50,60},
   hzs={90,100,110,120,130,80},
 }
@@ -107,8 +107,8 @@ function init()
     softcut.loop(i,1)
     softcut.pre_filter_lp(i,1)
     softcut.post_filter_lp(i,1)
-    softcut.pre_filter_fc(i,18000)
-    softcut.post_filter_fc(i,18000)
+    softcut.pre_filter_fc(i,8000)
+    softcut.post_filter_fc(i,8000)
     
     softcut.fade_time(i,0.2)
     softcut.level_slew_time(i,0)
@@ -192,7 +192,7 @@ function update_main()
         s.v[j].loop_reset=false
         local total_length=s.v[j].sample_length*params:get(j.."glitches")
         engine.attack(total_length*1/10)
-        engine.sustain(total_length)
+        engine.sustainTime(total_length)
         engine.release(total_length)
         -- local rrand=math.random()
         -- if rrand<0.33 then
@@ -227,16 +227,15 @@ function update_main()
         end
         softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
         local rrand=math.random()
-        if rrand<0.33 then
+        if rrand<0.6 then
           softcut.rate(j,1.5)
-        elseif rrand<0.66 then
-          softcut.rate(j,2)
         else
           softcut.rate(j,1)
         end
       end
       if glitched then
         print("sleeping for "..s.v[j].sample_length*(params:get(j.."glitches")))
+        clock.sync(1/16)
         clock.sleep(s.v[j].sample_length*(params:get(j.."glitches")))
         print("stopped glitch")
         softcut.level(j,0)
