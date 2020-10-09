@@ -36,6 +36,7 @@ s={
   wobbles={1/8,1/4,1/2,1,2},
   endhzs={10,20,30,40,50,60},
   hzs={90,100,110,120,130,80},
+  live_glitch_voice=0,
 }
 
 -- constants
@@ -60,13 +61,13 @@ function init()
     params:add_group("glitchlet "..i-1,9)
     params:add_option(i.."active","active",{"no","yes"},1)
     params:add_option(i.."randomize","randomize",{"no","yes"},2)
-    params:add_option(i.."gate","gate",{"off","on"},1)
+    params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
-    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,100,'%'))
-    params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,100,'%'))
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
+    params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
     params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*1000*i/7,'ms'))
     params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
-    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,4,'x'))
+    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,math.random(5)+1,'x'))
   end
   
   for i=1,6 do
@@ -187,11 +188,11 @@ function update_main()
       local glitched=false
       if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
         glitched=true
-        glitch_engine(j)
+        glitch_engine(j,s.v[i].sample_length)
       end
       if math.random()*100<params:get(j.."glitch probability") and params:get(j.."volume")*params:get("glitch volume")>0 then
         glitched=true
-        glitch_softcut(j)
+        glitch_softcut(j,s.v[i].sample_start,s.v[i].sample_end)
       end
       if glitched then
         print("sleeping for "..s.v[j].sample_length*(params:get(j.."glitches")))
@@ -217,13 +218,13 @@ function glitch_stop(j)
   end
 end
 
-function glitch_engine(j)
+function glitch_engine(j,length)
   if params:get(j.."gate")==2 then
     audio.level_monitor(0)
   end
   s.v[j].playing=true
   s.v[j].loop_reset=false
-  local total_length=s.v[j].sample_length*params:get(j.."glitches")
+  local total_length=length*params:get(j.."glitches")
   engine.attack(total_length*1/10)
   engine.sustainTime(total_length)
   engine.release(total_length)
@@ -233,15 +234,15 @@ function glitch_engine(j)
   engine.hz(s.hzs[math.random(#s.hzs)])
 end
 
-function glitch_softcut(j)
+function glitch_softcut(j,start,e)
   if params:get(j.."gate")==2 then
     audio.level_monitor(0)
   end
   s.v[j].playing=true
   s.v[j].loop_reset=false
-  softcut.loop_start(j,s.v[j].sample_start)
-  softcut.loop_end(j,s.v[j].sample_end)
-  softcut.position(j,s.v[j].sample_start)
+  softcut.loop_start(j,start)
+  softcut.loop_end(j,e)
+  softcut.position(j,start)
   softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
   local rrand=math.random(5)
   if rrand==1 then
@@ -250,15 +251,15 @@ function glitch_softcut(j)
     softcut.rate(j,1.5)
   elseif rrand==3 then
     softcut.rate(j,-1)
-    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*10)
+    softcut.rate_slew_time(j,(e-start)*10)
     softcut.rate(j,2)
   elseif rrand==4 then
     softcut.rate(j,2)
-    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*20)
+    softcut.rate_slew_time(j,(e-start)*20)
     softcut.rate(j,-0.125)
   elseif rrand==5 then
     softcut.rate(j,1)
-    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*20)
+    softcut.rate_slew_time(j,(e-start)*20)
     softcut.rate(j,4)
   end
   
@@ -309,9 +310,28 @@ function key(n,z)
     else
       s.shift=false
     end
+  elseif n==2  then
+    available=0
+    for i=2,6 do
+      if s.v[i].playing==false then 
+        available=i 
+        break
+      end
+    end
+    if available > 0 and z==1 then
+      glitch_softcut(available,s.v[1].position-s.sixteenth_beat/1000*4,s.v[1].position)
+      glitch_engine(available,s.sixteenth_beat/1000*4)
+    elseif z==0 then 
+      for i=2,6 do 
+        if s.v[i].playing==true then 
+          glitch_stop(i)
+        end
+      end
+    end
   elseif n>1 and z==1 then
+     -- this code looks weird because i didn't want to rewrite it
     local adj=1
-    if n==2 then
+    if n==2 or s.shift then
       adj=-1
     end
     local foo=s.i+adj
@@ -355,7 +375,7 @@ function enc(n,d)
   elseif n==2 and s.param_mode==1 then
     params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
   elseif n==3 and s.param_mode==1 then
-    params:set(s.i.."volume",util.clamp(params:get(s.i.."volume")+d/100,0,1))
+    params:set(s.i.."gate",util.clamp(params:get(s.i.."volume")+sign(d),1,2))
   elseif n==2 and s.param_mode==2 then
     params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
   elseif n==3 and s.param_mode==2 then
@@ -379,6 +399,11 @@ function redraw()
   -- show glitchlet info
   x=4+shift_amount
   y=8+shift_amount
+  if s.param_mode==0 then 
+    screen.level(15)
+  else
+    screen.level(1)
+  end
   screen.move(x,y)
   screen.text(s.i-1)
   screen.move(x,y)
@@ -392,7 +417,9 @@ function redraw()
   screen.move(x+10,y)
   screen.text("x"..params:get(s.i.."glitches"))
   screen.move(x+24,y)
-  screen.text(params:get(s.i.."volume").."amp")
+  if params:get(s.i.."gate")==2 then 
+    screen.text("gated")
+  end
   if s.param_mode==2 then
     screen.level(15)
   else
