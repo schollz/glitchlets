@@ -4,7 +4,10 @@ lets glitch with glitchlets.
 
 ![Image]()
 
-this script is inspired by [this supercollider script](https://sccode.org/1-1e) for amen break glitches. it also utilizes a lot of softcut for realtime looping glitches along with the sound glitches.
+
+this script glitches incoming audio. everything is quantized to the global tempo so it stays somewhat in beat. this script is inspired by a [supercollider script glitching the "amen break"](https://sccode.org/1-1e) and a [recent track by John Frusciante](https://www.youtube.com/watch?v=1q8Yf-vlZg4).
+
+there are five voices for glitching. each voice has individual volume, panning, gating, positions and probabilities. each voice basically is a softcut loop with random tape modulations. along with each voice there is a supercollider engine that adds a wobbly resonant low pass filter to each glitch to get that 90's feel.
 
 future directions:
 
@@ -17,18 +20,19 @@ future directions:
 
 ### Documentation
 
-- hold K1 to turn off glitches
-- K2/K3 switch glitchlet
-- E1 switchs parameters
-- E2/E3 modulates parameter
+**set tempo in `clock -> tempo` before loading**
 
-lots of parameters in the global menu.
+- hold K1 to turn off glitches
+- K2 manually glitches
+- K3 or K1+K3 switch glitchlet
+- E1 switchs parameters
+- E2/E3 modulate parameters
 
 make sure to restart norns the first time you install because it has a new supercollider engine that needs to be compiled.
 
 ## demo 
 
-<p align="center"><a href="https://www.instagram.com/p/CEb2CDQBXaz/"><img src="https://user-images.githubusercontent.com/6550035/91628605-30102a80-e976-11ea-9d0e-249e6219c411.png" alt="Demo of playing" width=80%></a></p>
+<p align="center"><a href="https://www.instagram.com/p/CGG1TPdhdCO/"><img src="https://user-images.githubusercontent.com/6550035/95542191-f89b9180-09a9-11eb-8aac-0f7963cf4135.png" alt="Demo of playing" width=80%></a></p>
 
 ## my other norns
 

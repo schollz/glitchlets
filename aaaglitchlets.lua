@@ -7,10 +7,13 @@
 --
 --    ▼ instructions below ▼
 --
+-- set tempo in clock -> tempo
+-- before loading
 -- hold K1 to turn off glitches
--- K2/K3 switch glitchlet
+-- K2 manually glitches
+-- K3 or K1+K3 switch glitchlet
 -- E1 switchs parameters
--- E2/E3 modulates parameter
+-- E2/E3 modulate parameters
 
 engine.name='Warb'
 
@@ -58,14 +61,15 @@ function init()
   update_loop_length(params:get("loop length"))
   
   for i=2,6 do
-    params:add_group("glitchlet "..i-1,9)
+    params:add_group("glitchlet "..i-1,10)
     params:add_option(i.."active","active",{"no","yes"},1)
     params:add_option(i.."randomize","randomize",{"no","yes"},2)
     params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
+    params:add_taper(i.."pan","pan",-1,1,math.random()*2-1,.1,"")
     params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
     params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
-    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*1000*i/7,'ms'))
+    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*math.random(),'ms'))
     params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,math.random(5)+1,'x'))
   end
@@ -75,7 +79,6 @@ function init()
     s.v[i].active=0
     s.v[i].playing=false
     s.v[i].loop_reset=true
-    s.v[i].volume=0
     s.v[i].position=0
     s.v[i].sample_start=0
     s.v[i].sample_length=0
@@ -165,8 +168,15 @@ function update_main()
   if math.floor(clock.get_beats())%params:get("loop length")==0 and s.loop_time~=0 then
     -- reset amplitude time
     s.loop_time=0
+
   end
   
+  if clock.get_beat_sec()/16*1000~=s.sixteenth_beat or s.loop_end~=clock.get_beat_sec()*params:get("loop length") then 
+    -- tempo has been changed, do a reset
+    print("updating bar")
+    s.sixteenth_beat= clock.get_beat_sec()/16*1000
+    update_loop_length(params:get("loop length"))
+  end
   -- activate if ready
   for i=2,6 do
     if s.shift then goto continue end
@@ -243,6 +253,7 @@ function glitch_softcut(j,start,e)
   softcut.loop_start(j,start)
   softcut.loop_end(j,e)
   softcut.position(j,start)
+  softcut.pan(j,params:get(j.."pan"))
   softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
   local rrand=math.random(5)
   if rrand==1 then
@@ -429,7 +440,11 @@ function redraw()
   screen.text(params:get(s.i.."glitch probability").."%")
   screen.move(x+77,y)
   screen.text(params:get(s.i.."warb probability").."%")
-  
+  if params:get(s.i.."randomizer")==2 then 
+    screen.move(x+90,y)
+    screen.text("R")
+  end
+
   -- draw waveform
   draw_waveform()
   
