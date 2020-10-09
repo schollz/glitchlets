@@ -173,97 +173,82 @@ function update_main()
     if params:get(i.."sample length")==0 then goto continue end
     if s.v[i].playing==true then goto continue end
     if not s.v[i].loop_reset then goto continue end
-    active1=(s.v[1].position<s.loop_end and math.abs(s.v[1].position-s.v[i].sample_start)<s.sixteenth_beat/1000)
-    active2=(s.v[1].position>=s.loop_end and math.abs(s.v[1].position-s.loop_end-s.v[i].sample_start)<s.sixteenth_beat/1000)
-    if (active1==false and active2==false) then goto continue end
     
     s.v[i].sample_start=params:get(i.."sample start")/1000
     s.v[i].sample_length=params:get(i.."sample length")/1000
     s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
+    local ready=(s.v[i].sample_end-s.v[1].position)<s.sixteenth_beat/1000 and (s.v[i].sample_end-s.v[1].position)>0
+    if ready==false then goto continue end
+    
     local j=i
     clock.run(function()
       print("attempting glitch...")
       local glitched=false
-      -- supercollider glitching
       if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
         glitched=true
-        audio.level_monitor(0)
-        s.v[j].playing=true
-        s.v[j].loop_reset=false
-        local total_length=s.v[j].sample_length*params:get(j.."glitches")
-        engine.attack(total_length*1/10)
-        engine.sustainTime(total_length)
-        engine.release(total_length)
-        -- local rrand=math.random()
-        -- if rrand<0.33 then
-        --   engine.rate(1.5)
-        -- elseif rrand<0.66 then
-        --   engine.rate(2)
-        -- else
-        --   engine.rate(1)
-        -- end
-        engine.amp(params:get("warb volume")*params:get(j.."volume"))
-        engine.wobble(s.wobbles[math.random(#s.wobbles)])
-        engine.endfreq(s.endhzs[math.random(#s.endhzs)])
-        engine.hz(s.hzs[math.random(#s.hzs)])
+        glitch_engine(j)
       end
-      -- softcut glitching
       if math.random()*100<params:get(j.."glitch probability") and params:get(j.."volume")*params:get("glitch volume")>0 then
         glitched=true
-        audio.level_monitor(0)
-        s.v[j].playing=true
-        s.v[j].loop_reset=false
-        print("glitching "..j)
-        print("stopping in "..s.v[j].sample_length*params:get(j.."glitches"))
-        print("sample_length "..s.v[j].sample_length)
-        if active1 then
-          softcut.position(j,s.v[j].sample_start+s.loop_end)
-          softcut.loop_start(j,s.v[j].sample_start+s.loop_end)
-          softcut.loop_end(j,s.v[j].sample_end+s.loop_end)
-        else
-          softcut.position(j,s.v[j].sample_start)
-          softcut.loop_start(j,s.v[j].sample_start)
-          softcut.loop_end(j,s.v[j].sample_end)
-        end
-        softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
-        local rrand=math.random()
-        if rrand<0.6 then
-          softcut.rate(j,1.5)
-        else
-          softcut.rate(j,1)
-        end
+        glitch_softcut(j)
       end
       if glitched then
         print("sleeping for "..s.v[j].sample_length*(params:get(j.."glitches")))
         clock.sync(1/16)
         clock.sleep(s.v[j].sample_length*(params:get(j.."glitches")))
-        print("stopped glitch")
-        softcut.level(j,0)
-        audio.level_monitor(1)
-        s.v[j].playing=false
+        glitch_stop(j)
       end
     end)
     ::continue::
   end
 end
 
+function glitch_stop(j)
+  print("stopped glitch")
+  softcut.level(j,0)
+  audio.level_monitor(1)
+  s.v[j].playing=false
+end
+
+function glitch_engine(j)
+  audio.level_monitor(0)
+  s.v[j].playing=true
+  s.v[j].loop_reset=false
+  local total_length=s.v[j].sample_length*params:get(j.."glitches")
+  engine.attack(total_length*1/10)
+  engine.sustainTime(total_length)
+  engine.release(total_length)
+  engine.amp(params:get("warb volume")*params:get(j.."volume"))
+  engine.wobble(s.wobbles[math.random(#s.wobbles)])
+  engine.endfreq(s.endhzs[math.random(#s.endhzs)])
+  engine.hz(s.hzs[math.random(#s.hzs)])
+end
+
+function glitch_softcut(j)
+  audio.level_monitor(0)
+  s.v[j].playing=true
+  s.v[j].loop_reset=false
+  softcut.loop_start(j,s.v[j].sample_start)
+  softcut.loop_end(j,s.v[j].sample_end)
+  softcut.position(j,s.v[j].sample_start)
+  softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
+  local rrand=math.random()
+  if rrand<0.6 then
+    softcut.rate(j,1.5)
+  else
+    softcut.rate(j,1)
+  end
+  -- TODO: play with softcut slew rates
+end
+
 function update_amp(val)
   k=round_to_nearest(s.v[1].position,s.resolution)/s.resolution
   if k~=s.last_k or s.amps[k]==nil then
-    if k<s.last_k or (s.last_k<s.loop_end/s.resolution and k>=s.loop_end/s.resolution) then
+    if k<s.last_k then
       print("reseting loop "..s.v[1].position.." loop end="..s.loop_end)
       for i=2,6 do
         s.v[i].loop_reset=true
       end
-      -- if math.random()<0.5 then
-      --   print("high pass")
-      --   softcut.pre_filter_hp (1,1)
-      --   softcut.pre_filter_fc(1,12000)
-      -- else
-      --   print("low pass")
-      --   softcut.pre_filter_lp (1,1)
-      --   softcut.pre_filter_fc(1,600)
-      -- end
     end
     s.amps[k]=val
     s.update_ui=true
@@ -276,14 +261,14 @@ end
 function update_loop_length(x)
   -- rebuild table
   s.amps={}
-  for i=1,(clock.get_beat_sec()*x*2)/s.resolution do
+  for i=1,(clock.get_beat_sec()*x)/s.resolution do
     table.insert(s.amps,0)
   end
   s.loop_end=clock.get_beat_sec()*x
   print("final: "..s.loop_end)
   print("final: "..s.loop_end/s.resolution)
   softcut.loop_start(1,0)
-  softcut.loop_end(1,clock.get_beat_sec()*x*2)
+  softcut.loop_end(1,clock.get_beat_sec()*x)
 end
 
 function update_loop_length_and_update(x)
@@ -390,9 +375,9 @@ function redraw()
   else
     screen.level(1)
   end
-  screen.move(x+38,y)
+  screen.move(x+54,y)
   screen.text(params:get(s.i.."glitch probability").."%")
-  screen.move(x+52,y)
+  screen.move(x+77,y)
   screen.text(params:get(s.i.."warb probability").."%")
   
   -- draw waveform
@@ -424,7 +409,7 @@ function draw_waveform()
   local m=57
   
   maxval=max(s.amps)
-  nval=#s.amps/2
+  nval=#s.amps
   
   maxw=nval
   if maxw>w then
