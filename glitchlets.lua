@@ -257,7 +257,7 @@ function glitch_softcut(j,start,e)
   softcut.position(j,start)
   softcut.pan(j,params:get(j.."pan"))
   softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
-  local rrand=math.random(5)
+  local rrand=math.random(6)
   if rrand==1 then
     softcut.rate(j,1)
   elseif rrand==2 then
@@ -274,6 +274,9 @@ function glitch_softcut(j,start,e)
     softcut.rate(j,1)
     softcut.rate_slew_time(j,(e-start)*20)
     softcut.rate(j,4)
+  elseif rrand==6 then 
+    softcut.rate_slew_time(j,(e-start)*10)
+    softcut.rate(j,-1)
   end
   
 end
