@@ -1,6 +1,6 @@
 ## glitchlets
 
-add glitching to anything.
+add glitching to everything.
 
 ![Image](https://user-images.githubusercontent.com/6550035/95544203-52eb2100-09af-11eb-8cce-6699f4ccd043.gif)
 
