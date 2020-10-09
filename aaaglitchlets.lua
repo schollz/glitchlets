@@ -177,7 +177,7 @@ function update_main()
     s.v[i].sample_start=params:get(i.."sample start")/1000
     s.v[i].sample_length=params:get(i.."sample length")/1000
     s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
-    local ready=(s.v[i].sample_end-s.v[1].position)<s.sixteenth_beat/1000 and (s.v[i].sample_end-s.v[1].position)>0
+    local ready=(s.v[i].sample_end-s.v[1].position)<2*s.sixteenth_beat/1000 and (s.v[i].sample_end-s.v[1].position)>0
     if ready==false then goto continue end
     
     local j=i
