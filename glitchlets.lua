@@ -14,6 +14,7 @@
 -- K3 or K1+K3 switch glitchlet
 -- E1 switchs parameters
 -- E2/E3 modulate parameters
+-- K1+K2 randomizes everything
 
 engine.name='Warb'
 
@@ -59,19 +60,19 @@ function init()
   params:set_action("warb volume",update_parameters)
   params:read(_path.data..'glitchlets/'.."glitchlets.pset")
   update_loop_length(params:get("loop length"))
-  
+
   for i=2,6 do
     params:add_group("glitchlet "..i-1,10)
     params:add_option(i.."active","active",{"no","yes"},1)
-    params:add_option(i.."randomize","randomize",{"no","yes"},2)
+    params:add_option(i.."randomize","randomize",{"no","yes"},1)
     params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
-    params:add_taper(i.."pan","pan",-1,1,math.random()*2-1,.1,"")
-    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
-    params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,math.random()*100,'%'))
-    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*math.random(),'ms'))
+    params:add_taper(i.."pan","pan",-1,1,0,.1,"")
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,99,'%'))
+    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,99,'%'))
+    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*i/8,'ms'))
     params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
-    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,math.random(5)+1,'x'))
+    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,i+2,'x'))
   end
   
   for i=1,6 do
@@ -120,6 +121,7 @@ function init()
     softcut.rate_slew_time(i,0)
     softcut.phase_quant(i,s.resolution)
   end
+  -- have to do this again.... :(
   update_loop_length(params:get("loop length"))
   
   -- initialize timers
@@ -321,6 +323,19 @@ function key(n,z)
     else
       s.shift=false
     end
+  elseif n==2 and s.shift==true then 
+    show_message("randomzing!")
+    for i=2,6 do
+      params:set(i.."active",math.random(2))
+      params:set(i.."randomize",math.random(2))
+      params:set(i.."gate",math.random(2))
+      params:set(i.."pan",math.random()*2-1)
+      params:set(i.."glitch probability",math.random()*99)
+      params:set(i.."warb probability",math.random()*99)
+      params:set(i.."sample length",s.sixteenth_beat*math.random(8))
+      params:set(i.."sample start",util.clamp(s.loop_end*1000*math.random(),0,s.loop_end*1000-s.sixteenth_beat*9))
+      params:set(i.."glitches",math.random(8))
+    end
   elseif n==2  then
     available=0
     for i=2,6 do
@@ -359,7 +374,7 @@ end
 function enc(n,d)
   if s.shift and n==1 then
   elseif n==1 then
-    s.param_mode=util.clamp(s.param_mode+sign(d),0,2)
+    s.param_mode=util.clamp(s.param_mode+sign(d),0,3)
   elseif n==2 and s.param_mode==0 then
     if params:get(s.i.."active")==1 then
       print("activating")
@@ -386,11 +401,15 @@ function enc(n,d)
   elseif n==2 and s.param_mode==1 then
     params:set(s.i.."glitches",util.clamp(params:get(s.i.."glitches")+sign(d),0,12))
   elseif n==3 and s.param_mode==1 then
-    params:set(s.i.."gate",util.clamp(params:get(s.i.."volume")+sign(d),1,2))
+    params:set(s.i.."volume",util.clamp(params:get(s.i.."volume")+d/100,0,1))
   elseif n==2 and s.param_mode==2 then
     params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
   elseif n==3 and s.param_mode==2 then
     params:set(s.i.."warb probability",util.clamp(params:get(s.i.."warb probability")+d,0,100))
+  elseif n==2 and s.param_mode==3 then
+    params:set(s.i.."randomize",util.clamp(params:get(s.i.."randomize")+sign(d),1,2))
+  elseif n==3 and s.param_mode==3 then
+    params:set(s.i.."gate",util.clamp(params:get(s.i.."gate")+sign(d),1,2))
   end
   s.update_ui=true
 end
@@ -428,9 +447,8 @@ function redraw()
   screen.move(x+10,y)
   screen.text("x"..params:get(s.i.."glitches"))
   screen.move(x+24,y)
-  if params:get(s.i.."gate")==2 then 
-    screen.text("gated")
-  end
+  screen.text(string.format("%2.1famp",params:get(s.i.."volume")))
+
   if s.param_mode==2 then
     screen.level(15)
   else
@@ -438,12 +456,22 @@ function redraw()
   end
   screen.move(x+54,y)
   screen.text(params:get(s.i.."glitch probability").."%")
-  screen.move(x+77,y)
+  screen.move(x+74,y)
   screen.text(params:get(s.i.."warb probability").."%")
-  if params:get(s.i.."randomizer")==2 then 
-    screen.move(x+90,y)
-    screen.text("R")
+  screen.move(x+94,y)
+  if s.param_mode==3 then
+    screen.level(15)
+  else
+    screen.level(1)
   end
+  local text =""
+  if params:get(s.i.."randomize")==2 then 
+    text=text.."r "
+  end
+  if params:get(s.i.."gate")==2 then 
+    text=text.."g"
+  end
+  screen.text(text)
 
   -- draw waveform
   draw_waveform()
@@ -502,7 +530,7 @@ function draw_waveform()
   for x,v in pairs(disp) do
     screen.level(1)
     for i=2,6 do
-      if s.v[i].active and time_per_x*x>=params:get(i.."sample start")/1000 and time_per_x*x<=(params:get(i.."sample start")+params:get(i.."sample length"))/1000 then
+      if s.v[i].active and time_per_x*x>=params:get(i.."sample start")/1000 and time_per_x*x<=(params:get(i.."sample start")+params:get(i.."sample length"))/1000 and params:get(i.."sample length")>0 then
         if dots[i]==false then
           dots[i]=true
           screen.level(1)
