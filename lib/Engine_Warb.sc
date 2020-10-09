@@ -30,8 +30,8 @@ Engine_Warb : CroneEngine {
 			// player= 2*Compander.ar(player, player, 0.1, 1,0.5, 0.01, 0.01);
 			RecordBuf.ar(In.ar([inL, inR]), bufnum, doneAction:2, loop: 0);
 			player = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * 1, Impulse.ar(freq), startPos: Rand(0,20), doneAction:2, loop: 10) ;
-			player = RLPF.ar(player, SinOsc.ar(wobble/sustain).range(20000,80), XLine.ar(0.2,0.9,sustain)) ;
-			player = LPR.ar(player,8000);
+			// player = LPR.ar(RLPF.ar(player, SinOsc.ar(wobble/sustain).range(20000,80), XLine.ar(0.2,0.9,sustain)),8000);
+			player = RLPF.ar(player, SinOsc.ar(wobble/sustain).range(12000,80), XLine.ar(0.2,0.9,sustain));
 			player= 4*Compander.ar(player, player, 0.1, 1,0.5, 0.01, 0.01);
 			// env = Env.perc(level:amp, releaseTime:release).kr(2);
 			env=Env.linen(attackTime:attack, sustainTime: sustainTime, releaseTime: release, level: amp, curve: 'lin').kr(2);
