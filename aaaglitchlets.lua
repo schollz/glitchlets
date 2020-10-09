@@ -25,7 +25,6 @@ s={
   shift=false,
   monitor=false,
   message="",
-  ready=false,
   current_beat=0,
   current_note=0,
   i=2,
@@ -58,8 +57,10 @@ function init()
   update_loop_length(params:get("loop length"))
   
   for i=2,6 do
-    params:add_group("glitchlet "..i-1,7)
+    params:add_group("glitchlet "..i-1,9)
     params:add_option(i.."active","active",{"no","yes"},1)
+    params:add_option(i.."randomize","randomize",{"no","yes"},2)
+    params:add_option(i.."gate","gate",{"off","on"},1)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
     params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,100,'lin',1,100,'%'))
     params:add_control(i.."warb probability","warb probability",controlspec.new(0,100,'lin',1,100,'%'))
@@ -72,7 +73,7 @@ function init()
     s.v[i]={}
     s.v[i].active=0
     s.v[i].playing=false
-    s.v[i].loop_reset=false
+    s.v[i].loop_reset=true
     s.v[i].volume=0
     s.v[i].position=0
     s.v[i].sample_start=0
@@ -206,12 +207,20 @@ end
 function glitch_stop(j)
   print("stopped glitch")
   softcut.level(j,0)
+  softcut.rate_slew_time(j,0)
+  softcut.rate(j,1)
   audio.level_monitor(1)
   s.v[j].playing=false
+  if params:get(j.."randomize")==2 then
+    params:set(j.."sample start",util.clamp(math.random()*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-params:get(j.."sample length")))
+    s.update_ui=true
+  end
 end
 
 function glitch_engine(j)
-  audio.level_monitor(0)
+  if params:get(j.."gate")==2 then
+    audio.level_monitor(0)
+  end
   s.v[j].playing=true
   s.v[j].loop_reset=false
   local total_length=s.v[j].sample_length*params:get(j.."glitches")
@@ -225,20 +234,34 @@ function glitch_engine(j)
 end
 
 function glitch_softcut(j)
-  audio.level_monitor(0)
+  if params:get(j.."gate")==2 then
+    audio.level_monitor(0)
+  end
   s.v[j].playing=true
   s.v[j].loop_reset=false
   softcut.loop_start(j,s.v[j].sample_start)
   softcut.loop_end(j,s.v[j].sample_end)
   softcut.position(j,s.v[j].sample_start)
   softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
-  local rrand=math.random()
-  if rrand<0.6 then
-    softcut.rate(j,1.5)
-  else
+  local rrand=math.random(5)
+  if rrand==1 then
     softcut.rate(j,1)
+  elseif rrand==2 then
+    softcut.rate(j,1.5)
+  elseif rrand==3 then
+    softcut.rate(j,-1)
+    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*10)
+    softcut.rate(j,2)
+  elseif rrand==4 then
+    softcut.rate(j,2)
+    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*20)
+    softcut.rate(j,-0.125)
+  elseif rrand==5 then
+    softcut.rate(j,1)
+    softcut.rate_slew_time(j,(s.v[j].sample_end-s.v[j].sample_start)*20)
+    softcut.rate(j,4)
   end
-  -- TODO: play with softcut slew rates
+  
 end
 
 function update_amp(val)
@@ -437,7 +460,7 @@ function draw_waveform()
   for x,v in pairs(disp) do
     screen.level(1)
     for i=2,6 do
-      if s.v[i].active and time_per_x*x>=s.v[i].sample_start and time_per_x*x<=s.v[i].sample_end then
+      if s.v[i].active and time_per_x*x>=params:get(i.."sample start")/1000 and time_per_x*x<=(params:get(i.."sample start")+params:get(i.."sample length"))/1000 then
         if dots[i]==false then
           dots[i]=true
           screen.level(1)
