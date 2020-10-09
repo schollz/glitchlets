@@ -20,7 +20,7 @@ future directions:
 
 ### Documentation
 
-**quickstart:** put music into line-in. set norns global tempo in `clock -> tempo` to tempo of music (or not). open glitchlets and press K1+K2. enjoy glitched-out music.
+**quickstart:** put music into line-in. set norns global tempo in `clock -> tempo` to tempo of music (or not). open glitchlets and press K1+K2 to randomize all params. enjoy.
 
 - hold K1 to turn off glitches
 - K2 manually glitches
