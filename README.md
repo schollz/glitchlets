@@ -1,10 +1,10 @@
 ## glitchlets
 
-lets glitch with glitchlets.
+add glitching to anything.
 
 ![Image](https://user-images.githubusercontent.com/6550035/95544203-52eb2100-09af-11eb-8cce-6699f4ccd043.gif)
 
-
+*lets glitch with glitchlets.*                                                                                        
 this script glitches incoming audio. everything is quantized to the global tempo so it stays somewhat in beat. this script is inspired by a [supercollider script glitching the "amen break"](https://sccode.org/1-1e) and a [recent track by John Frusciante](https://www.youtube.com/watch?v=1q8Yf-vlZg4).
 
 there are five voices for glitching. each voice has individual volume, panning, gating, positions and probabilities. each voice basically is a softcut loop with random tape modulations. along with each voice there is a supercollider engine that adds a wobbly resonant low pass filter to each glitch to get that 90's feel.
@@ -20,7 +20,7 @@ future directions:
 
 ### Documentation
 
-**quickstart:** find some music/beat. set norns global tempo in `clock -> tempo` to the music/beat. open glitchlets and press K1+K2. enjoy.
+**quickstart:** put music into line-in. set norns global tempo in `clock -> tempo` to tempo of music (or not). open glitchlets and press K1+K2. enjoy glitched-out music.
 
 - hold K1 to turn off glitches
 - K2 manually glitches

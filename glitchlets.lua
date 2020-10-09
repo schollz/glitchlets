@@ -53,9 +53,9 @@ function init()
   params:add_separator("glitchlets")
   params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
-  params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,0.01,'')}
+  params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,0.5,'')}
   params:set_action("glitch volume",update_parameters)
-  params:add{type="control",id="warb volume",name="warb volume",controlspec=controlspec.new(0,1,'lin',0,0.9,''),
+  params:add{type="control",id="warb volume",name="warb volume",controlspec=controlspec.new(0,1,'lin',0,0.25,''),
   action=function(x) engine.amp(x) end}
   params:set_action("warb volume",update_parameters)
   params:read(_path.data..'glitchlets/'.."glitchlets.pset")
