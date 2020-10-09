@@ -27,8 +27,8 @@ all five glitchlets can be carefully controlled via global params or quick menu.
 
 - hold K1 to turn off glitches
 - K2 manually glitches
-- K3 or K1+K3 switch glitchlet
-- E1 switchs parameters
+- K3 or K1+K3 switches glitchlet
+- E1 switches parameters
 - E2/E3 modulate parameters
 - K1+K2 randomizes everything
 
