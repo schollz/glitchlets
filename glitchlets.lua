@@ -66,15 +66,15 @@ function init()
 
   for i=2,6 do
     params:add_group("glitchlet "..i-1,10)
-    params:add_option(i.."active","active",{"no","yes"},1)
-    params:add_option(i.."randomize","randomize",{"no","yes"},1)
+    params:add_option(i.."active","active",{"no","yes"},2)
+    params:add_option(i.."randomize","randomize",{"no","yes"},2)
     params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
     params:add_taper(i.."pan","pan",-1,1,0,.1,"")
-    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,99,'%'))
-    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,99,'%'))
-    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*(i-2)/8*1000,'ms'))
-    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.sixteenth_beat*4,'ms'))
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,30,'%'))
+    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,30,'%'))
+    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,(math.random(16)-1)/16*1000*s.loop_end,'ms'))
+    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.sixteenth_beat*math.random(6),'ms'))
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,i+2,'x'))
   end
   
@@ -172,9 +172,10 @@ function update_positions(i,x)
 end
 
 function update_main()
-  if s.time_until_sync > 0 then
-    s.time_until_sync = s.time_until_sync-s.resolution
+  if s.time_until_sync > 0 then 
+    s.time_until_sync = s.time_until_sync - s.resolution
   end
+
   if s.update_ui then
     redraw()
   end
@@ -190,6 +191,7 @@ function update_main()
     s.sixteenth_beat= clock.get_beat_sec()/16*1000
     update_loop_length(params:get("loop length"))
   end
+
   -- activate if ready
   for i=2,6 do
     if s.shift then goto continue end
@@ -207,7 +209,6 @@ function update_main()
     
     local j=i
     clock.run(function()
-      print("attempting glitch...")
       local glitched=false
       if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
         glitched=true
@@ -236,7 +237,8 @@ function glitch_stop(j)
   audio.level_monitor(1)
   s.v[j].playing=false
   if params:get(j.."randomize")==2 then
-    params:set(j.."sample start",util.clamp(math.random()*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-params:get(j.."sample length")))
+    params:set(j.."sample length",(math.random(8))*s.sixteenth_beat)
+    params:set(j.."sample start",util.clamp(((math.random(8)-1)/8)*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-4*params:get(j.."sample length")))
     s.update_ui=true
   end
 end
@@ -660,10 +662,11 @@ end
 -- osc
 -- 
 function osc_in(path, args, from)
-  print("heartbeat "..args[1])
-  if s.time_until_sync <= 0 and s.synced==false then 
+  if s.time_until_sync <= 0 then 
     print("SYNCING")
-    s.synced=true
     softcut.position(1,0)
+    s.time_until_sync=s.loop_end*4
+  else
+    print("heartbeat "..args[1])
   end
 end
