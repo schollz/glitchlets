@@ -15,14 +15,15 @@ Engine_Warb : CroneEngine {
 	var bufnum2=13;
 	var recorder;
 	var tracker;
+	var buffer1;
+	var buffer2;
 
 	*new { arg context, doneCallback;
 		^super.new(context, doneCallback);
 	}
 
 	alloc {
-	    var  buffer1 = Buffer.alloc(context.server,44100 * 6, 2,bufnum:bufnum); 
-	    var  buffer2 = Buffer.alloc(context.server,44100 * 0.5, 2,bufnum:bufnum2); 
+	    buffer1 = Buffer.alloc(context.server,44100 * 6, 2,bufnum:bufnum); 
 		pg = ParGroup.tail(context.xg);
 	    SynthDef("Warb", {
 			arg out, inL=0, inR=1, freq=440, amp=amp, endfreq=endfreq, attack=attack, release=release, sustain=sustain,sustainTime=sustainTime, wobble=wobble, pan=pan;
@@ -66,6 +67,8 @@ Engine_Warb : CroneEngine {
 		tracker = Synth("BeatTracker", [\inL, context.in_b[0].index], target:pg);
 
 		this.addCommand("start","f", { arg msg;
+			var val = msg[1];
+			buffer2 = Buffer.alloc(context.server,44100 * val, 2,bufnum:bufnum2); 
 		});
 
 		this.addCommand("hz", "f", { arg msg;
@@ -110,5 +113,7 @@ Engine_Warb : CroneEngine {
 		tracker.free;
 		osfun.free;
 		pg.free;
+		buffer1.free;
+		buffer2.free;
 	}
 }

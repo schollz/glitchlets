@@ -71,8 +71,8 @@ function init()
     params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
     params:add_taper(i.."pan","pan",-1,1,0,.1,"")
-    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,30,'%'))
-    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,30,'%'))
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,50,'%'))
+    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,50,'%'))
     params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,(math.random(16)-1)/16*1000*s.loop_end,'ms'))
     params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.sixteenth_beat*math.random(6),'ms'))
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,i+2,'x'))
@@ -151,7 +151,7 @@ function init()
   -- osc input 
   osc.event = osc_in
 
-  engine.start(0)
+  engine.start(clock.get_beat_sec())
 
   softcut.play(1,1)
   softcut.rec(1,1)
@@ -238,9 +238,10 @@ function glitch_stop(j)
   audio.level_monitor(1)
   s.v[j].playing=false
   if params:get(j.."randomize")==2 then
+    params:set(j.."pan",math.random()*2-1)
     params:set(j.."glitches",math.random(6))
     params:set(j.."sample length",(math.random(16))*s.sixteenth_beat)
-    params:set(j.."sample start",util.clamp(((math.random(8)-1)/8)*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-4*params:get(j.."sample length")))
+    params:set(j.."sample start",util.clamp(((math.random(16)-1)/16)*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-4*params:get(j.."sample length")))
     s.update_ui=true
   end
 end
@@ -259,6 +260,7 @@ function glitch_engine(j,length)
   engine.amp(params:get("warb volume")*params:get(j.."volume"))
   engine.wobble(s.wobbles[math.random(#s.wobbles)])
   engine.endfreq(s.endhzs[math.random(#s.endhzs)])
+  engine.pan(params:get(j.."pan"))
   engine.hz(s.hzs[math.random(#s.hzs)])
 end
 
@@ -352,9 +354,8 @@ function key(n,z)
   elseif n==2 and s.shift==true then 
     show_message("randomzing!")
     for i=2,6 do
-      params:set(i.."active",math.random(2))
-      params:set(i.."randomize",math.random(2))
-      params:set(i.."gate",math.random(2))
+      params:set(i.."active",2)
+      params:set(i.."randomize",2)
       params:set(i.."pan",math.random()*2-1)
       params:set(i.."glitch probability",math.random()*99)
       params:set(i.."warb probability",math.random()*99)
