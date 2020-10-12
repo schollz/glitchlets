@@ -54,7 +54,7 @@ function init()
   
   print(s.sixteenth_beat)
   params:add_separator("glitchlets")
-  params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
+  params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,4,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
   params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,1.0,'')}
   params:set_action("glitch volume",update_parameters)
