@@ -1,4 +1,4 @@
--- glitchlets v0.1.0
+-- glitchlets v0.2.0
 -- lets glitch
 -- with
 -- glitchlets
@@ -7,14 +7,14 @@
 --
 --    ▼ instructions below ▼
 --
--- set tempo in clock -> tempo
--- before loading
+-- first set clock->tempo
+-- then reload glitchlets
+-- K1+K2 does quick start
 -- hold K1 to turn off glitches
 -- K2 manually glitches
 -- K3 or K1+K3 switch glitchlet
--- E1 switchs parameters
+-- E1 switches parameters
 -- E2/E3 modulate parameters
--- K1+K2 randomizes everything
 
 engine.name='Warb'
 
@@ -56,26 +56,35 @@ function init()
   params:add_separator("glitchlets")
   params:add_control("loop length","loop length",controlspec.new(0,64,'lin',1,8,'beats'))
   params:set_action("loop length",update_loop_length_and_update)
-  params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,0.5,'')}
+  params:add{type="control",id="glitch volume",name="glitch volume",controlspec=controlspec.new(0,1,'lin',0,1.0,'')}
   params:set_action("glitch volume",update_parameters)
-  params:add{type="control",id="warb volume",name="warb volume",controlspec=controlspec.new(0,1,'lin',0,0.25,''),
+  params:add{type="control",id="warb volume",name="warb volume",controlspec=controlspec.new(0,1,'lin',0,0.2,''),
   action=function(x) engine.amp(x) end}
   params:set_action("warb volume",update_parameters)
+  params:add_option("one at a time","one at a time",{"no","yes"},2)
+  params:set_action("one at a time",update_parameters)
   params:read(_path.data..'glitchlets/'.."glitchlets.pset")
   update_loop_length(params:get("loop length"))
 
   for i=2,6 do
-    params:add_group("glitchlet "..i-1,10)
-    params:add_option(i.."active","active",{"no","yes"},2)
-    params:add_option(i.."randomize","randomize",{"no","yes"},2)
+    params:add_group("glitchlet "..i-1,9)
+    params:add_option(i.."active","active",{"no","yes"},1)
+    if i < 6 then 
+      params:add_option(i.."randomize","randomize",{"no","yes"},1)
+    else
+      params:add_option(i.."randomize","randomize",{"no","yes"},2)
+    end
     params:add_option(i.."gate","gate",{"off","on"},2)
     params:add_taper(i.."volume","volume",0,1,1,.1,"")
     params:add_taper(i.."pan","pan",-1,1,0,.1,"")
-    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,50,'%'))
-    params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,50,'%'))
-    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,(math.random(16)-1)/16*1000*s.loop_end,'ms'))
-    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.sixteenth_beat*math.random(6),'ms'))
-    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,i+2,'x'))
+    params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,30,'%'))
+    if i < 6 then 
+      params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,(i-2)/4*1000*s.loop_end,'ms'))
+    else
+      params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,(math.random(16)-1)/16*1000*s.loop_end,'ms'))
+    end
+    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
+    params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,math.random(5)+3,'x'))
   end
   
   for i=1,6 do
@@ -194,26 +203,33 @@ function update_main()
 
   -- activate if ready
   for i=2,6 do
+    if haveGlitched then goto continue end
     if s.shift then goto continue end
     if params:get(i.."active")==1 then goto continue end
     if params:get(i.."glitches")==0 then goto continue end
     if params:get(i.."sample length")==0 then goto continue end
     if s.v[i].playing==true then goto continue end
     if not s.v[i].loop_reset then goto continue end
-    
+    isglitching=false
+    if params:get("one at a time")==2 then 
+        for j=2,6 do
+          if i~=j and s.v[j].playing then 
+              isglitching=true
+              break
+          end
+        end
+    end
+    if isglitching then goto continue end 
+
     s.v[i].sample_start=params:get(i.."sample start")/1000
     s.v[i].sample_length=params:get(i.."sample length")/1000
     s.v[i].sample_end=s.v[i].sample_start+s.v[i].sample_length
     local ready=(s.v[i].sample_end-s.v[1].position)<2*s.sixteenth_beat/1000 and (s.v[i].sample_end-s.v[1].position)>0
     if ready==false then goto continue end
-    
+        
     local j=i
     clock.run(function()
       local glitched=false
-      if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
-        -- glitched=true
-        -- glitch_engine(j,s.v[i].sample_length)
-      end
       if math.random()*100<params:get(j.."glitch probability") and params:get(j.."volume")*params:get("glitch volume")>0 then
         glitched=true
         glitch_engine(j,s.v[i].sample_length)
@@ -303,7 +319,6 @@ function glitch_softcut(j,start,e)
     softcut.rate_slew_time(j,(e-start)*5)
     softcut.rate(j,-0.5)
   end
-  
 end
 
 function update_amp(val)
@@ -352,16 +367,20 @@ function key(n,z)
       s.shift=false
     end
   elseif n==2 and s.shift==true then 
-    show_message("randomzing!")
+    show_message("quick start")
     for i=2,6 do
       params:set(i.."active",2)
-      params:set(i.."randomize",2)
+      if i==6 then 
+        params:set(i.."randomize",2)
+      end
       params:set(i.."pan",math.random()*2-1)
-      params:set(i.."glitch probability",math.random()*99)
-      params:set(i.."warb probability",math.random()*99)
-      params:set(i.."sample length",s.sixteenth_beat*math.random(8))
-      params:set(i.."sample start",util.clamp(s.loop_end*1000*math.random(),0,s.loop_end*1000-s.sixteenth_beat*9))
-      params:set(i.."glitches",math.random(8))
+      params:set(i.."glitch probability",math.random(20)+20)
+      params:set(i.."sample length",s.sixteenth_beat*(math.random(6)+2))
+      params:set(i.."sample start",(i-2)/4*1000*s.loop_end)
+      if i==6 then 
+        params:set(i.."sample start",(math.random(16)-1)/16*1000*s.loop_end)
+      end
+      params:set(i.."glitches",math.random(5)+3)
     end
   elseif n==2  then
     available=0
@@ -432,7 +451,7 @@ function enc(n,d)
   elseif n==2 and s.param_mode==2 then
     params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
   elseif n==3 and s.param_mode==2 then
-    params:set(s.i.."warb probability",util.clamp(params:get(s.i.."warb probability")+d,0,100))
+    params:set(s.i.."glitch probability",util.clamp(params:get(s.i.."glitch probability")+d,0,100))
   elseif n==2 and s.param_mode==3 then
     params:set(s.i.."randomize",util.clamp(params:get(s.i.."randomize")+sign(d),1,2))
   elseif n==3 and s.param_mode==3 then
@@ -483,9 +502,7 @@ function redraw()
   end
   screen.move(x+54,y)
   screen.text(params:get(s.i.."glitch probability").."%")
-  screen.move(x+74,y)
-  screen.text(params:get(s.i.."warb probability").."%")
-  screen.move(x+94,y)
+  screen.move(x+75,y)
   if s.param_mode==3 then
     screen.level(15)
   else
