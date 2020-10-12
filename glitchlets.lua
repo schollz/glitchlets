@@ -41,7 +41,10 @@ s={
   endhzs={10,20,30,40,50,60},
   hzs={90,100,110,120,130,80},
   live_glitch_voice=0,
+  synced=false,
+  time_until_sync=10,
 }
+
 
 -- constants
 function init()
@@ -70,8 +73,8 @@ function init()
     params:add_taper(i.."pan","pan",-1,1,0,.1,"")
     params:add_control(i.."glitch probability","glitch probability",controlspec.new(0,99,'lin',1,99,'%'))
     params:add_control(i.."warb probability","warb probability",controlspec.new(0,99,'lin',1,99,'%'))
-    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*i/8,'ms'))
-    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,0,'ms'))
+    params:add_control(i.."sample start","sample start",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.loop_end*(i-2)/8*1000,'ms'))
+    params:add_control(i.."sample length","sample length",controlspec.new(0,s.loop_end*1000,'lin',s.sixteenth_beat,s.sixteenth_beat*4,'ms'))
     params:add_control(i.."glitches","glitches",controlspec.new(0,64,'lin',1,i+2,'x'))
   end
   
@@ -169,6 +172,9 @@ function update_positions(i,x)
 end
 
 function update_main()
+  if s.time_until_sync > 0 then
+    s.time_until_sync = s.time_until_sync-s.resolution
+  end
   if s.update_ui then
     redraw()
   end
@@ -655,4 +661,9 @@ end
 -- 
 function osc_in(path, args, from)
   print("heartbeat "..args[1])
+  if s.time_until_sync <= 0 and s.synced==false then 
+    print("SYNCING")
+    s.synced=true
+    softcut.position(1,0)
+  end
 end

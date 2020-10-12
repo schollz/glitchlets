@@ -28,7 +28,7 @@ Engine_Warb : CroneEngine {
 			freq = XLine.ar(freq,endfreq,sustain/4);
 			freq = freq.cpsmidi + (LFNoise2.ar(3).range(-1,1) * (1/12));
 			freq = freq.midicps;
-			player = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * 1, Impulse.ar(freq), startPos: Rand(0,20), doneAction:2, loop: 10) ;
+			player = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * 1, Impulse.ar(freq), startPos: (Rand(0,16)/16)*BufFrames.kr(bufnum), doneAction:2, loop: 10) ;
 			player = RLPF.ar(player, SinOsc.ar(wobble/sustain).range(20000,80), XLine.ar(0.2,0.9,sustain));
 			player= 4*Compander.ar(player, player, 0.1, 1,0.5, 0.01, 0.01);
 			env=Env.linen(attackTime:attack, sustainTime: sustainTime, releaseTime: release, level: amp, curve: 'lin').kr(2);
