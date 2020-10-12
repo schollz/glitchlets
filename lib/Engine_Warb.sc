@@ -52,8 +52,8 @@ Engine_Warb : CroneEngine {
 	    osfun = OSCFunc(
 	    	{ 
 	    		arg msg, time; 
-	    		[time, msg].postln;
-				NetAddr("127.0.0.1", 10111).sendMsg("warbbeat",time,msg[3]);   //sendMsg works out the correct OSC message for you
+	    		// [time, msg].postln;
+				NetAddr("127.0.0.1", 10111).sendMsg("heartbeat",time,msg[3]);   //sendMsg works out the correct OSC message for you
 	    	},'/tr', context.server.addr);
 
 

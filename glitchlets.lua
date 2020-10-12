@@ -654,6 +654,5 @@ end
 -- osc
 -- 
 function osc_in(path, args, from)
-  print("got data!")
-  print("osc from " .. from[1] .. " port " .. from[2])
+  print("heartbeat "..args[1])
 end
