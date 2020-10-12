@@ -145,6 +145,11 @@ function init()
   -- monitor input
   audio.level_monitor(1)
   
+  -- osc input 
+  osc.event = osc_in
+
+  engine.start(0)
+
   softcut.play(1,1)
   softcut.rec(1,1)
 end
@@ -231,6 +236,7 @@ function glitch_stop(j)
 end
 
 function glitch_engine(j,length)
+  print("turning on engine")
   if params:get(j.."gate")==2 then
     audio.level_monitor(0)
   end
@@ -642,3 +648,12 @@ function average(t)
   return (sum/count)
 end
 
+
+
+--
+-- osc
+-- 
+function osc_in(path, args, from)
+  print("got data!")
+  print("osc from " .. from[1] .. " port " .. from[2])
+end
