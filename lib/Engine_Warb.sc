@@ -12,6 +12,7 @@ Engine_Warb : CroneEngine {
 	var wobble=3;
 	var pan=0;
 	var bufnum=12;
+	var bufnum2=13;
 	var recorder;
 	var tracker;
 
@@ -21,6 +22,7 @@ Engine_Warb : CroneEngine {
 
 	alloc {
 	    var  buffer1 = Buffer.alloc(context.server,44100 * 6, 2,bufnum:bufnum); 
+	    var  buffer2 = Buffer.alloc(context.server,44100 * 0.5, 2,bufnum:bufnum2); 
 		pg = ParGroup.tail(context.xg);
 	    SynthDef("Warb", {
 			arg out, inL=0, inR=1, freq=440, amp=amp, endfreq=endfreq, attack=attack, release=release, sustain=sustain,sustainTime=sustainTime, wobble=wobble, pan=pan;
@@ -28,7 +30,7 @@ Engine_Warb : CroneEngine {
 			freq = XLine.ar(freq,endfreq,sustain/4);
 			freq = freq.cpsmidi + (LFNoise2.ar(3).range(-1,1) * (1/12));
 			freq = freq.midicps;
-			player = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * 0.25, Impulse.ar(freq), startPos: (Rand(0,14)/16)*BufFrames.kr(bufnum)+Rand(0,20), doneAction:2, loop: 4) ;
+			player = PlayBuf.ar(2, bufnum2, BufRateScale.kr(bufnum2) * 1, Impulse.ar(freq), startPos: Rand(0,20), doneAction:2, loop: 4) ;
 			player = RLPF.ar(player, SinOsc.ar(wobble/sustain).range(20000,80), XLine.ar(0.2,0.9,sustain));
 			player= 4*Compander.ar(player, player, 0.1, 1,0.5, 0.01, 0.01);
 			env=Env.linen(attackTime:attack, sustainTime: sustainTime, releaseTime: release, level: amp, curve: 'lin').kr(2);
@@ -38,6 +40,7 @@ Engine_Warb : CroneEngine {
 		SynthDef("Recorder",{
 			arg  inL=0,inR=1;
 			RecordBuf.ar(In.ar([inL,inR]), bufnum, loop: 1);
+			RecordBuf.ar(In.ar([inL,inR]), bufnum2, loop: 1);
 		}).add;
 
 		SynthDef("BeatTracker",{

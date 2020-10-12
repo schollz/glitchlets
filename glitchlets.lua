@@ -211,11 +211,12 @@ function update_main()
     clock.run(function()
       local glitched=false
       if math.random()*100<=params:get(j.."warb probability") and params:get("warb volume")*params:get(j.."volume")>0 then
-        glitched=true
-        glitch_engine(j,s.v[i].sample_length)
+        -- glitched=true
+        -- glitch_engine(j,s.v[i].sample_length)
       end
       if math.random()*100<params:get(j.."glitch probability") and params:get(j.."volume")*params:get("glitch volume")>0 then
         glitched=true
+        glitch_engine(j,s.v[i].sample_length)
         glitch_softcut(j,s.v[i].sample_start,s.v[i].sample_end)
       end
       if glitched then
@@ -237,7 +238,8 @@ function glitch_stop(j)
   audio.level_monitor(1)
   s.v[j].playing=false
   if params:get(j.."randomize")==2 then
-    params:set(j.."sample length",(math.random(8))*s.sixteenth_beat)
+    params:set(j.."glitches",math.random(6))
+    params:set(j.."sample length",(math.random(16))*s.sixteenth_beat)
     params:set(j.."sample start",util.clamp(((math.random(8)-1)/8)*s.loop_end*1000,s.sixteenth_beat,s.loop_end*1000-4*params:get(j.."sample length")))
     s.update_ui=true
   end
@@ -252,8 +254,8 @@ function glitch_engine(j,length)
   s.v[j].loop_reset=false
   local total_length=length*params:get(j.."glitches")
   engine.attack(total_length*1/10)
-  engine.sustainTime(total_length)
-  engine.release(total_length)
+  engine.sustainTime(total_length/2)
+  engine.release(total_length/2)
   engine.amp(params:get("warb volume")*params:get(j.."volume"))
   engine.wobble(s.wobbles[math.random(#s.wobbles)])
   engine.endfreq(s.endhzs[math.random(#s.endhzs)])
@@ -271,10 +273,11 @@ function glitch_softcut(j,start,e)
   softcut.position(j,start)
   softcut.pan(j,params:get(j.."pan"))
   softcut.level(j,params:get(j.."volume")*params:get("glitch volume"))
-  local rrand=math.random(6)
+  local rrand=math.random(8)
   if rrand==1 then
     softcut.rate(j,1)
   elseif rrand==2 then
+    softcut.rate_slew_time(j,(e-start)*20)
     softcut.rate(j,1.5)
   elseif rrand==3 then
     softcut.rate(j,-1)
@@ -287,10 +290,16 @@ function glitch_softcut(j,start,e)
   elseif rrand==5 then
     softcut.rate(j,1)
     softcut.rate_slew_time(j,(e-start)*20)
-    softcut.rate(j,4)
+    softcut.rate(j,2)
   elseif rrand==6 then 
     softcut.rate_slew_time(j,(e-start)*10)
     softcut.rate(j,-1)
+  elseif rrand==7 then 
+    softcut.rate_slew_time(j,(e-start)*1)
+    softcut.rate(j,-1)
+  elseif rrand==8 then 
+    softcut.rate_slew_time(j,(e-start)*5)
+    softcut.rate(j,-0.5)
   end
   
 end
