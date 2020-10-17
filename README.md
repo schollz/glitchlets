@@ -1,3 +1,4 @@
+
 ## glitchlets
 
 add glitching to everything.
@@ -21,20 +22,23 @@ future directions:
 
 ### Documentation
 
-**quickstart:** put music into line-in. set norns global tempo in `clock -> tempo` to tempo of music (or not). open glitchlets and press K1+K2 to randomize all params. enjoy.
+**quickstart:** put music into line-in. set norns global tempo in `clock -> tempo` to tempo of music. open glitchlets and press K1+K2.
 
-all five glitchlets can be carefully controlled via global params or quick menu. quick menu:
+all five glitchlets can be consciously controlled via global params or quick menu. quick menu:
 
+- first set clock->tempo then reload glitchlets
+- K1+K2 does quick start
 - hold K1 to turn off glitches
 - K2 manually glitches
-- K3 or K1+K3 switches glitchlet
+- K3 or K1+K3 switch glitchlet
 - E1 switches parameters
 - E2/E3 modulate parameters
-- K1+K2 randomizes everything
 
 *note:* make sure to restart norns the first time you install because it has a new supercollider engine that needs to be compiled.
 
 ## demo 
+
+<p align="center"><a href="https://www.instagram.com/p/CGPwhuxBsFG/"><img src="https://user-images.githubusercontent.com/6550035/95760321-b9966600-0c5f-11eb-82a3-e3d95ec3c2d1.png" alt="Demo of playing" width=80%></a></p>
 
 <p align="center"><a href="https://www.instagram.com/p/CGG1TPdhdCO/"><img src="https://user-images.githubusercontent.com/6550035/95542191-f89b9180-09a9-11eb-8aac-0f7963cf4135.png" alt="Demo of playing" width=80%></a></p>
 

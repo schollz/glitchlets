@@ -194,8 +194,9 @@ function update_main()
 
   end
   
-  if clock.get_beat_sec()/16*1000~=s.sixteenth_beat or s.loop_end~=clock.get_beat_sec()*params:get("loop length") then 
+  if math.abs(clock.get_beat_sec()/16*1000-s.sixteenth_beat)>0.5 or math.abs(s.loop_end-clock.get_beat_sec()*params:get("loop length"))>0.5 then 
     -- tempo has been changed, do a reset
+    print(math.abs(clock.get_beat_sec()/16*1000-s.sixteenth_beat))
     print("updating bar")
     s.sixteenth_beat= clock.get_beat_sec()/16*1000
     update_loop_length(params:get("loop length"))
